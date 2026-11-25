@@ -17,6 +17,10 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.7'
+      - name: 3D-Bibliothek einbinden (offline nutzbar)
+        run: |
+          curl -fsSL -o app/src/main/assets/three.min.js https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js
+          sed -i 's#https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js#three.min.js#' app/src/main/assets/index.html
       - name: APK bauen
         run: gradle assembleDebug --no-daemon
       - name: APK umbenennen
@@ -28,6 +32,6 @@ jobs:
       - name: Release veröffentlichen
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v1.0.${{ github.run_number }}
-          name: Bundesbank Idle v1.0.${{ github.run_number }}
+          tag_name: v2.0.${{ github.run_number }}
+          name: Bundesbank Idle v2.0.${{ github.run_number }}
           files: BundesbankIdle.apk
