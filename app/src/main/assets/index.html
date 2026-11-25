@@ -168,7 +168,7 @@ const GUARD=[
  {id:'g10',n:'Satellitenüberwachung',d:'Schutz +300.000',b:5e10,v:300000}];
 const GANGS=[{n:'Kleinganoven',m:.6},{n:'eine Räuberbande',m:1},{n:'eine Profi-Crew',m:1.6},{n:'ein Hackerkollektiv',m:2.2}];
 const R=1.15,KEY='bbidle2';
-const blank=()=>({cash:25,stock:0,lv:0,total:0,life:0,l:{c1:1},v:{v1:1},t:{},f:{},g:{},rep:0,next:90,warn:0,gang:0,won:0,lost:0,log:[],ts:Date.now()});
+const blank=()=>({cash:25,stock:0,lv:0,total:0,life:0,l:{c1:1},v:{v1:1},t:{},f:{},g:{g1:2},rep:0,next:90,warn:0,gang:0,won:0,lost:0,log:[],ts:Date.now()});
 let S=blank(),view='werk',hall='coin',amt='1',confirmReset=false,dirty=true;
 try{const x=JSON.parse(localStorage.getItem(KEY));if(x)S=Object.assign(blank(),x)}catch(e){}
 const $=id=>document.getElementById(id);
@@ -259,7 +259,7 @@ function update(){
   if(hall==='lager'){const pr=capCost();$('b-lager').textContent='Ausbauen '+fmt(pr);$('b-lager').disabled=S.cash<pr;$('lvT').textContent='Stufe '+(S.lv+1);
    $('capT').textContent=fmt(S.stock)+' von '+fmt(c)+' · nächste Stufe '+fmt(c*3);$('lgB').firstElementChild.style.width=sp+'%';$('lgB').classList.toggle('hot',sp>95);$('dlT').textContent=fmt(d)+'/s'}
   else for(const l of LINES){const b=$('b-'+l.id);if(!b)continue;const c2=cnt(S.l,l.id),lk=l.req&&featN()<l.req,n=c2?howMany(l.b,c2):1,pr=costN(l.b,c2,n);
-   b.textContent=c2?'+'+n+' '+fmt(pr):'Bauen '+fmt(pr);b.disabled=!!lk||S.cash<pr;
+   b.textContent=c2?'+'+n+' · '+fmt(pr):'Bauen '+fmt(pr);b.disabled=!!lk||S.cash<pr;
    if(c2){const nm=nextMs(c2),pm=MS[msN(c2)-1]||0;$('n-'+l.id).textContent='×'+c2;$('r-'+l.id).textContent=fmt(lineRate(l))+'/s';
     $('d-'+l.id).textContent=nm?'Bonus ×2 bei '+nm+' ('+c2+'/'+nm+')':'Alle Boni erreicht';$('p-'+l.id).style.width=nm?((c2-pm)/(nm-pm)*100)+'%':'100%'}}
   return}
@@ -323,10 +323,10 @@ const W=(()=>{
  function label(t,x,y,z){const cv=document.createElement('canvas');cv.width=320;cv.height=80;const c=cv.getContext('2d');
   c.fillStyle='rgba(255,255,255,.92)';c.beginPath();c.moveTo(20,4);c.arcTo(316,4,316,76,18);c.arcTo(316,76,4,76,18);c.arcTo(4,76,4,4,18);c.arcTo(4,4,316,4,18);c.fill();
   c.fillStyle='#0b5d57';c.font='700 40px Barlow, sans-serif';c.textAlign='center';c.textBaseline='middle';c.fillText(t,160,42);
-  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(cv),depthTest:false}));sp.scale.set(5.2,1.3,1);sp.position.set(x,y,z);sp.renderOrder=9;scene.add(sp)}
+  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(cv),depthTest:false}));sp.scale.set(7,1.75,1);sp.position.set(x,y,z);sp.renderOrder=9;scene.add(sp)}
  const taps=[];
  /* Gelände */
- B(140,.2,140,'#8fc06a',0,-.1,0);
+ B(140,.2,140,'#7fb35a',0,-.1,0);
  B(35,.1,31,'#c3c9c8',0,.05,0);
  const fl1=B(14,.14,14,'#efe4cc',-8,.12,-6);fl1.userData.go=['werk','coin'];taps.push(fl1);
  B(14,1.5,.3,'#f4f5f2',-8,.85,-13);B(.3,1.5,14,'#f4f5f2',-15,.85,-6);B(.3,.5,14,'#f4f5f2',-1,.35,-6);B(14,.5,.3,'#f4f5f2',-8,.35,1);
@@ -340,7 +340,7 @@ const W=(()=>{
  B(80,.06,3,'#5a6163',30,.1,12.8);for(let i=0;i<14;i++)B(1.4,.07,.15,'#ffffff',2+i*4,.12,12.8);
  B(3,.06,9,'#5a6163',14.5,.1,8.5);
  [[-22,-18],[-24,-6],[-21,6],[-23,17],[-10,-20],[2,-21],[14,-19],[24,-14],[23,-2],[26,4],[-6,21],[6,20],[22,20],[-16,20],[30,22],[-28,0]].forEach(([x,z],i)=>{C(.15,.2,.8,'#7a5532',x,.4,z,null,6);const t=new THREE.Mesh(new THREE.ConeGeometry(1.1+(i%3)*.2,2.4,7),mat(i%2?'#4f9a4f':'#5fae5a'));t.position.set(x,1.9,z);t.castShadow=true;scene.add(t)});
- label('Münzhalle',-8,3.2,-6);label('Druckhalle',8,3.2,-6);label('Tresor',-10,3.6,7);label('Fuhrpark',6,2.4,7.5);
+ label('Münzhalle',-8,3.4,-14);label('Druckhalle',8,3.4,-14);label('Tresor',-10,3.6,7);label('Fuhrpark',6,2.4,7.5);
  /* Räuber und Tor */
  const robbers=[0,1,2].map(i=>{const p=person('#222831');p.visible=false;return p});
  const beacon=new THREE.Mesh(new THREE.SphereGeometry(.35,10,8),new THREE.MeshLambertMaterial({color:'#3a6fd8',emissive:'#000000'}));beacon.position.set(-10,2.4,3.4);beacon.visible=false;scene.add(beacon);
@@ -390,7 +390,7 @@ const W=(()=>{
  function along(u){let d=u*tot;for(let i=0;i<segL.length;i++){if(d<=segL[i]){const a=truckPath[i],b=truckPath[i+1],f=d/segL[i];return[a[0]+(b[0]-a[0])*f,a[1]+(b[1]-a[1])*f,Math.atan2(-(b[1]-a[1]),b[0]-a[0])]}d-=segL[i]}return[42,12.8,0]}
  function perim(u){const P=[[-16.6,-14.6],[16.6,-14.6],[16.6,14.6],[-16.6,14.6]],L=[33.2,29.2,33.2,29.2],T=124.8;let d=(u%1)*T;for(let i=0;i<4;i++){if(d<=L[i]){const a=P[i],b=P[(i+1)%4],f=d/L[i];return[a[0]+(b[0]-a[0])*f,a[1]+(b[1]-a[1])*f,Math.atan2(-(b[1]-a[1]),b[0]-a[0])]}d-=L[i]}return[P[0][0],P[0][1],0]}
  /* Kamera */
- let zoom=1,tx=0,tz=0,speeds=0,sp=[];
+ let zoom=1.2,tx=0,tz=0,speeds=0,sp=[];
  function fit(){const el=$('world'),w=el.clientWidth,h=el.clientHeight;renderer.setSize(w,h,false);const a=w/h,vh=Math.max(26,48/a)/zoom,vw=vh*a;
   Object.assign(cam,{left:-vw/2,right:vw/2,top:vh/2,bottom:-vh/2});cam.position.set(tx+30,30,tz+30);cam.lookAt(tx,0,tz);cam.updateProjectionMatrix()}
  new ResizeObserver(fit).observe($('world'));
