@@ -156,7 +156,7 @@ func _ready() -> void:
 	fit()
 
 func build_static() -> void:
-	B(160, 0.2, 160, "#3c9a34", 0, -0.1, 0)
+	B(160, 0.2, 160, "#2f7d2b", 0, -0.1, 0)
 	B(35, 0.1, 31, "#8e9a9e", 0, 0.05, 0)
 	# Münzhalle (warm)
 	B(14, 0.14, 14, "#e2b874", -8, 0.12, -6)
@@ -189,7 +189,7 @@ func build_static() -> void:
 		var x: float = trees[i][0]
 		var z: float = trees[i][1]
 		C(0.15, 0.2, 0.8, "#7a5532", x, 0.4, z, null, 6)
-		C(0.0, 1.1 + (i % 3) * 0.2, 2.4, "#3f9a3a" if i % 2 else "#4fb043", x, 1.9, z, null, 7)
+		C(0.0, 1.1 + (i % 3) * 0.2, 2.4, "#2e7d32" if i % 2 else "#3b8f3a", x, 1.9, z, null, 7)
 	label3d("Münzhalle", -8, 3.4, -14)
 	label3d("Druckhalle", 8, 3.4, -14)
 	label3d("Tresor", -10, 3.6, 7)
@@ -341,6 +341,14 @@ func build() -> void:
 		B(6, 2.6, 5, "#d9e2e8", 21, 1.3, -6, dyn)
 		B(6.2, 0.25, 5.2, "#3a6fd8", 21, 2.7, -6, dyn)
 		B(1.6, 1.4, 0.1, "#5a6163", 21, 0.8, -3.45, dyn)
+	# Kisten für aktive Exportaufträge (in Landesfarben)
+	var oi := 0
+	for o in S["orders"]:
+		if o.get("active", false):
+			var fl: Array = o.get("flag", ["#ffffff"])
+			for k in range(3):
+				B(1.1, 0.7, 1.1, fl[k % fl.size()], 9.0 + oi * 2.0, 0.5 + k * 0.72, 9.6, dyn)
+			oi += 1
 	build_security()
 	build_fleet()
 	last_pile = -1

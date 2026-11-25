@@ -67,6 +67,25 @@ const GUARD := [
 ]
 const GANGS := [{n="Kleinganoven", m=0.6}, {n="eine Räuberbande", m=1.0}, {n="eine Profi-Crew", m=1.6}, {n="ein Hackerkollektiv", m=2.2}]
 
+const COUNTRIES := [
+	{n="Schweiz", cur="Franken", fx=0.95, flag=["#d52b1e", "#ffffff", "#d52b1e"]},
+	{n="Großbritannien", cur="Pfund", fx=0.85, flag=["#012169", "#ffffff", "#c8102e"]},
+	{n="Norwegen", cur="Kronen", fx=11.5, flag=["#ba0c2f", "#ffffff", "#00205b"]},
+	{n="Island", cur="Kronen", fx=150.0, flag=["#02529c", "#ffffff", "#dc1e35"]},
+	{n="Türkei", cur="Lira", fx=36.0, flag=["#e30a17", "#ffffff", "#e30a17"]},
+	{n="Serbien", cur="Dinar", fx=117.0, flag=["#c6363c", "#0c4076", "#ffffff"]},
+	{n="Ukraine", cur="Hrywnja", fx=45.0, flag=["#0057b7", "#0057b7", "#ffd700"]},
+	{n="Georgien", cur="Lari", fx=2.9, flag=["#ffffff", "#ff0000", "#ffffff"]},
+	{n="Marokko", cur="Dirham", fx=10.8, flag=["#c1272d", "#006233", "#c1272d"]},
+	{n="Japan", cur="Yen", fx=160.0, flag=["#ffffff", "#bc002d", "#ffffff"]},
+	{n="USA", cur="Dollar", fx=1.08, flag=["#3c3b6e", "#ffffff", "#b22234"]},
+	{n="Kanada", cur="Dollar", fx=1.5, flag=["#ff0000", "#ffffff", "#ff0000"]},
+	{n="Australien", cur="Dollar", fx=1.65, flag=["#012169", "#ffffff", "#e4002b"]},
+	{n="Mexiko", cur="Pesos", fx=21.0, flag=["#006847", "#ffffff", "#ce1126"]},
+	{n="Brasilien", cur="Real", fx=6.2, flag=["#009c3b", "#ffdf00", "#002776"]},
+]
+const ORDER_SHARE := 0.2
+
 const C_PETROL := Color("#0e8a7c")
 const C_HEAD := Color("#0a4f4a")
 const C_BG := Color("#0c1f24")
@@ -121,7 +140,7 @@ func now() -> float:
 
 func blank() -> Dictionary:
 	return {cash=25.0, stock=0.0, lv=0, total=0.0, life=0.0, l={"c1": 1}, v={"v1": 1}, t={}, f={}, g={"g1": 2},
-		rep=0, next=90.0, warn=0.0, gang=0, won=0, lost=0, log=[], ts=now(), mig1=1}
+		rep=0, next=90.0, warn=0.0, gang=0, won=0, lost=0, log=[], ts=now(), mig1=1, orders=[], odone=0}
 
 func load_game() -> void:
 	S = blank()
@@ -140,6 +159,8 @@ func apply_state(x: Dictionary) -> void:
 			b[k] = {}
 	if typeof(b["log"]) != TYPE_ARRAY:
 		b["log"] = []
+	if typeof(b["orders"]) != TYPE_ARRAY:
+		b["orders"] = []
 	S = b
 
 func save_game() -> void:
@@ -258,8 +279,76 @@ func add_log(t: String, c := "") -> void:
 	if view == "bank":
 		render()
 
+func active_orders() -> int:
+	var n := 0
+	for o in S["orders"]:
+		if o.get("active", false):
+			n += 1
+	return n
+
+func gen_order() -> Dictionary:
+	var c: Dictionary = COUNTRIES[randi() % COUNTRIES.size()]
+	for tries in range(10):
+		var dup := false
+		for o in S["orders"]:
+			if o.get("land", "") == c.n:
+				dup = true
+		if not dup:
+			break
+		c = COUNTRIES[randi() % COUNTRIES.size()]
+	var base: float = max(prod(), 0.35)
+	var dur := 90.0 + randf() * 330.0
+	var need := base * ORDER_SHARE * dur
+	return {land=c.n, cur=c.cur, fx=c.fx, flag=c.flag, need=need, done=0.0, reward=need * (2.2 + randf() * 1.3), active=false, wait=0.0, dur=dur}
+
+func orders_tick(dt: float) -> void:
+	var o_arr: Array = S["orders"]
+	while o_arr.size() < 3:
+		o_arr.append(gen_order())
+	var p := prod()
+	for i in range(o_arr.size()):
+		var o: Dictionary = o_arr[i]
+		if o.get("wait", 0.0) > 0.0:
+			o["wait"] -= dt
+			if o["wait"] <= 0.0:
+				o_arr[i] = gen_order()
+				if view == "orders":
+					render()
+			continue
+		if o.get("active", false):
+			o["done"] += p * ORDER_SHARE * dt
+			if o["done"] >= o["need"]:
+				earn(o["reward"])
+				S["odone"] = int(S.get("odone", 0)) + 1
+				add_log("Auftrag %s erledigt: %s %s geliefert, Lohn %s." % [o.land, num_cur(o.need * o.fx), o.cur, fmt(o.reward)], "good")
+				o_arr[i] = {wait=20.0, land="", active=false}
+				world.dirty = true
+				if view == "orders":
+					render()
+
+func num_cur(v: float) -> String:
+	return fmt(v).replace(" €", "")
+
+func accept_order(i: int) -> void:
+	var o: Dictionary = S["orders"][i]
+	if o.get("wait", 0.0) > 0.0 or o.get("active", false):
+		return
+	o["active"] = true
+	add_log("Auftrag aus %s angenommen." % o.land, "good")
+	world.dirty = true
+	save_game()
+	render()
+
+func decline_order(i: int) -> void:
+	var o: Dictionary = S["orders"][i]
+	if o.get("active", false):
+		return
+	S["orders"][i] = {wait=45.0, land="", active=false}
+	render()
+
 func step(dt: float) -> void:
-	S["stock"] = min(cap(), float(S["stock"]) + prod() * dt)
+	orders_tick(dt)
+	S["stock"] = min(cap(), float(S["stock"]) + prod() * (1.0 - ORDER_SHARE * active_orders()) * dt)
 	var d: float = min(float(S["stock"]), deliv() * dt)
 	S["stock"] -= d
 	earn(d)
@@ -307,6 +396,15 @@ func raid_tick(dt: float) -> void:
 		S["warn"] = 12.0
 		add_log("Verdächtige Bewegung vor dem Tor: %s." % GANGS[int(S["gang"])].n, "bad")
 
+func dur_txt(sec: float) -> String:
+	if sec > 86400.0:
+		return "über 1 Tag"
+	if sec >= 3600.0:
+		return "%d Std. %d Min." % [int(sec / 3600.0), int(fmod(sec, 3600.0) / 60.0)]
+	if sec >= 60.0:
+		return "%d Min. %d s" % [int(sec / 60.0), int(fmod(sec, 60.0))]
+	return "%d s" % int(sec)
+
 func cap_first(t: String) -> String:
 	return t.substr(0, 1).to_upper() + t.substr(1)
 
@@ -351,6 +449,8 @@ func _ready() -> void:
 	if not S.has("mig1"):
 		S["g"]["g1"] = max(cnt("g", "g1"), 2)
 		S["mig1"] = 1
+	if OS.has_environment("BB_VIEW"):
+		view = OS.get_environment("BB_VIEW")
 	build_ui()
 	offline_catchup()
 	render()
@@ -617,13 +717,13 @@ func build_ui() -> void:
 	root.add_child(nav_p)
 	var nav := hb(6)
 	nav_p.add_child(nav)
-	for it in [["werk", "Werk"], ["deliv", "Fuhrpark"], ["tech", "Technik"], ["feat", "Merkmale"], ["guard", "Schutz"], ["bank", "Bank"]]:
+	for it in [["werk", "Werk"], ["orders", "Aufträge"], ["deliv", "Fuhrpark"], ["tech", "Technik"], ["feat", "Merkmale"], ["guard", "Schutz"], ["bank", "Bank"]]:
 		var key: String = it[0]
 		var b := btn(it[1], func(): go(key), "light", 0)
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		b.custom_minimum_size = Vector2(0, 92)
-		b.add_theme_font_size_override("font_size", 22)
-		b.add_theme_stylebox_override("normal", sbox(Color(0, 0, 0, 0), 16, Color(0, 0, 0, 0), 0, 4))
+		b.add_theme_font_size_override("font_size", 19)
+		b.add_theme_stylebox_override("normal", sbox(Color(0, 0, 0, 0), 16, Color(0, 0, 0, 0), 0, 2))
 		nav.add_child(b)
 		nav_btns[key] = b
 
@@ -702,6 +802,8 @@ func render() -> void:
 			render_werk()
 		"bank":
 			render_bank()
+		"orders":
+			render_orders()
 		_:
 			render_list()
 	update_ui()
@@ -863,6 +965,49 @@ func render_list() -> void:
 		b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		row.add_child(b)
 		refs[key] = {btn=b, desc=desc, title=t, panel=p}
+
+func render_orders() -> void:
+	head_title("Aufträge", "Länder außerhalb der EU bestellen Münzen und Scheine. Jeder laufende Auftrag nutzt 20 % deiner Herstellung und zahlt am Ende einen hohen Lohn.")
+	for i in range(S["orders"].size()):
+		var o: Dictionary = S["orders"][i]
+		var idx := i
+		if o.get("wait", 0.0) > 0.0:
+			var pe := card(true)
+			var le := lbl("", 24, C_MUT, false, true)
+			pe.add_child(le)
+			refs["o%d" % i] = {wait=le}
+			continue
+		var p := card()
+		var v := vb(8)
+		p.add_child(v)
+		var top := hb(10)
+		v.add_child(top)
+		var flag := hb(0)
+		for fc in o.flag:
+			var cr := ColorRect.new()
+			cr.color = Color(fc)
+			cr.custom_minimum_size = Vector2(16, 34)
+			flag.add_child(cr)
+		flag.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		top.add_child(flag)
+		var t := lbl(o.land, 30, C_INK, true)
+		t.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		top.add_child(t)
+		top.add_child(lbl("Lohn " + fmt(o.reward), 26, C_GOLD, true))
+		v.add_child(lbl("%s %s herstellen" % [num_cur(o.need * o.fx), o.cur], 25, C_INK, false, true))
+		var bar := pbar(12)
+		v.add_child(bar)
+		var row := hb(12)
+		v.add_child(row)
+		var info := lbl("", 23, C_MUT, false, true)
+		row.add_child(info)
+		if o.get("active", false):
+			row.add_child(lbl("läuft", 26, C_GREEN, true))
+		else:
+			row.add_child(btn("Ablehnen", func(): decline_order(idx), "light", 170))
+			row.add_child(btn("Annehmen", func(): accept_order(idx), "main", 190))
+		refs["o%d" % i] = {bar=bar, info=info}
+	content.add_child(lbl("Bis zu 3 Aufträge werden angeboten. Ist einer erledigt, kommt nach kurzer Zeit ein neuer. Erledigt bisher: %d" % int(S.get("odone", 0)), 22, C_MUT, false, true))
 
 func render_bank() -> void:
 	head_title("Bank", "Reform, App, Spielstand und Lagebericht.")
@@ -1063,6 +1208,11 @@ func update_ui() -> void:
 	var hot: bool = rk > 50.0 or S["warn"] > 0.0
 	b_risk.add_theme_stylebox_override("normal", sbox(C_RED if hot else Color(1, 1, 1, 0.16), 18, Color(0, 0, 0, 0), 0, 14))
 	nav_btns["guard"].text = "Schutz •" if hot else "Schutz"
+	var open_n := 0
+	for o in S["orders"]:
+		if o.get("land", "") != "" and not o.get("active", false) and o.get("wait", 0.0) <= 0.0:
+			open_n += 1
+	nav_btns["orders"].text = "Aufträge %d" % open_n if open_n > 0 else "Aufträge"
 
 	if view == "werk":
 		if hall == "lager" and refs.has("lager"):
@@ -1104,6 +1254,24 @@ func update_ui() -> void:
 				r.desc.text = ("Gesperrt: benötigt %d Sicherheitsmerkmale (du hast %d)" % [int(l.req), feat_n()]) if lk else "Bauplatz frei · " + l.d
 		return
 	if view == "bank":
+		return
+	if view == "orders":
+		var p2 := prod()
+		for i in range(S["orders"].size()):
+			var key := "o%d" % i
+			if not refs.has(key):
+				continue
+			var o: Dictionary = S["orders"][i]
+			var r: Dictionary = refs[key]
+			if r.has("wait"):
+				r.wait.text = "Neuer Auftrag kommt in %d s …" % int(ceil(max(0.0, o.get("wait", 0.0))))
+				continue
+			r.bar.value = o.done / o.need * 100.0
+			var rest: float = (o.need - o.done) / max(0.001, p2 * ORDER_SHARE)
+			if o.get("active", false):
+				r.info.text = "%d %% fertig · noch ca. %s" % [int(o.done / o.need * 100.0), dur_txt(rest)]
+			else:
+				r.info.text = "Dauer ca. %s bei deiner Herstellung" % dur_txt(rest)
 		return
 	if view == "guard" and refs.has("risk"):
 		var r: Dictionary = refs["risk"]
