@@ -176,6 +176,67 @@ var update_panel: PanelContainer
 var l_update: Label
 var http: HTTPRequest
 var manual_check := false
+var upd_bar: ProgressBar
+var upd_btn: Button
+var dl: HTTPRequest
+const UPD_FILE := "user://update.apk"
+
+## Lädt die neue APK in den App-Speicher und öffnet direkt die Android-Installation
+func start_download() -> void:
+	if OS.get_name() != "Android":
+		OS.shell_open(APK_URL)
+		get_node("UpdRoot").visible = false
+		return
+	save_game()
+	if dl == null:
+		dl = HTTPRequest.new()
+		dl.use_threads = true
+		dl.max_redirects = 10
+		dl.download_chunk_size = 262144
+		add_child(dl)
+		dl.request_completed.connect(_on_download_done)
+	if dl.get_http_client_status() != HTTPClient.STATUS_DISCONNECTED:
+		return
+	if FileAccess.file_exists(UPD_FILE):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(UPD_FILE))
+	dl.download_file = UPD_FILE
+	upd_bar.visible = true
+	upd_bar.value = 0
+	upd_btn.disabled = true
+	upd_btn.text = "Lädt …"
+	var err := dl.request(APK_URL, ["User-Agent: BundesbankIdle"])
+	if err != OK:
+		download_failed()
+
+func download_tick() -> void:
+	if dl == null or not upd_bar.visible:
+		return
+	var total := dl.get_body_size()
+	if total > 0:
+		upd_bar.value = float(dl.get_downloaded_bytes()) / float(total) * 100.0
+		upd_btn.text = "Lädt … %d %%" % int(upd_bar.value)
+
+func _on_download_done(result: int, code: int, _h: PackedStringArray, _b: PackedByteArray) -> void:
+	if result != HTTPRequest.RESULT_SUCCESS or code != 200 or not FileAccess.file_exists(UPD_FILE):
+		download_failed()
+		return
+	upd_bar.value = 100
+	upd_btn.text = "Installation startet …"
+	save_game()
+	var err := OS.shell_open(ProjectSettings.globalize_path(UPD_FILE))
+	if err != OK:
+		download_failed()
+		return
+	l_update.text = "Android fragt jetzt, ob die Aktualisierung installiert werden soll. Tippe auf „Installieren“. Beim ersten Mal musst du einmalig erlauben, dass diese App Updates installieren darf."
+	upd_btn.disabled = false
+	upd_btn.text = "Erneut öffnen"
+
+func download_failed() -> void:
+	upd_bar.visible = false
+	upd_btn.disabled = false
+	upd_btn.text = "Im Browser laden"
+	l_update.text = "Das direkte Update hat nicht geklappt. Tippe auf „Im Browser laden“ – danach die Datei öffnen und installieren."
+	upd_btn.pressed.connect(func(): OS.shell_open(APK_URL), CONNECT_ONE_SHOT)
 var world_big := false
 
 # ---------------------------------------------------------------- Zustand
@@ -885,6 +946,7 @@ func _process(dt: float) -> void:
 	dt = min(dt, 1.0)
 	fling_tick(dt)
 	world_render_tick(dt)
+	download_tick()
 	S["gt"] = float(S["gt"]) + dt
 	step(dt)
 	raid_tick(dt)
@@ -1165,12 +1227,13 @@ func build_ui() -> void:
 	uv.add_child(l_update)
 	var uh := hb()
 	uv.add_child(uh)
+	upd_bar = pbar(16)
+	upd_bar.visible = false
+	uv.add_child(upd_bar)
 	var later := btn("Später", func(): get_node("UpdRoot").visible = false, "light", 200)
-	var inst := btn("Herunterladen", func():
-		OS.shell_open(APK_URL)
-		get_node("UpdRoot").visible = false, "main", 260)
+	upd_btn = btn("Jetzt installieren", func(): start_download(), "main", 300)
 	uh.add_child(later)
-	uh.add_child(inst)
+	uh.add_child(upd_btn)
 	build_dialog()
 
 func toggle_world() -> void:
@@ -1861,7 +1924,10 @@ func _on_update_response(result: int, code: int, _headers: PackedStringArray, bo
 	var latest := version_num(tag)
 	var mine := version_num(str(ProjectSettings.get_setting("application/config/version", "0")))
 	if latest > mine:
-		l_update.text = "Version %s ist da. Tippe auf „Herunterladen“, öffne danach die Datei und tippe auf „Installieren“. Dein Spielstand bleibt erhalten." % tag
+		l_update.text = "Version %s ist da. Tippe auf „Jetzt installieren“ – das Update wird direkt in der App geladen und installiert. Dein Spielstand bleibt erhalten." % tag
+		upd_btn.text = "Jetzt installieren"
+		upd_btn.disabled = false
+		upd_bar.visible = false
 		get_node("UpdRoot").visible = true
 	elif manual_check:
 		add_log("Du hast die neueste Version (%s)." % ProjectSettings.get_setting("application/config/version", "?"), "good")
