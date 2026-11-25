@@ -421,7 +421,31 @@ func day_phase() -> float:
 func is_night() -> bool:
 	return day_phase() > 0.62
 
+var _pf := -1
+var _pv := 0.0
+var _df := -1
+var _dv := 0.0
 func prod() -> float:
+	var fr := Engine.get_process_frames()
+	if fr == _pf:
+		return _pv
+	_pf = fr
+	_pv = prod_calc()
+	return _pv
+
+func deliv() -> float:
+	var fr := Engine.get_process_frames()
+	if fr == _df:
+		return _dv
+	_df = fr
+	_dv = deliv_calc()
+	return _dv
+
+func invalidate() -> void:
+	_pf = -1
+	_df = -1
+
+func prod_calc() -> float:
 	var s := 0.0
 	for l in LINES:
 		s += line_rate(l)
@@ -430,7 +454,7 @@ func prod() -> float:
 func del_m() -> float:
 	return tm("del") * rep_m() * (2.0 if has_d("sites", "leipzig") else 1.0) * (1.5 if has_d("mgr", "fleet") else 1.0) * fx_m("del")
 
-func deliv() -> float:
+func deliv_calc() -> float:
 	var s := 0.0
 	for v in VAN:
 		s += v.r * cnt("v", v.id)
@@ -693,8 +717,27 @@ func _notification(what: int) -> void:
 		if not S.is_empty():
 			offline_catchup()
 
+var last_scroll := 0
+var scroll_quiet := 0.0
+var wframe := 0
+func world_render_tick(dt: float) -> void:
+	var sv: SubViewport = world.get_viewport()
+	if scroll.scroll_vertical != last_scroll:
+		last_scroll = scroll.scroll_vertical
+		scroll_quiet = 0.0
+	else:
+		scroll_quiet += dt
+	wframe += 1
+	if scroll_quiet < 0.35:
+		sv.render_target_update_mode = SubViewport.UPDATE_DISABLED
+	elif int(S.get("gfx", 1)) == 1 or wframe % 2 == 0:
+		sv.render_target_update_mode = SubViewport.UPDATE_ONCE
+	else:
+		sv.render_target_update_mode = SubViewport.UPDATE_DISABLED
+
 func _process(dt: float) -> void:
 	dt = min(dt, 1.0)
+	world_render_tick(dt)
 	S["gt"] = float(S["gt"]) + dt
 	step(dt)
 	raid_tick(dt)
@@ -703,6 +746,9 @@ func _process(dt: float) -> void:
 	if ui_t > 0.25:
 		ui_t = 0.0
 		update_ui()
+	if OS.has_environment("BB_PERF") and shot_t > 5.0 and Engine.get_process_frames() % 5 == 0:
+		var vrid: RID = world.get_viewport().get_viewport_rid()
+		print("PERF world_draws=%d world_objs=%d nodes=%d" % [RenderingServer.viewport_get_render_info(vrid, RenderingServer.VIEWPORT_RENDER_INFO_TYPE_VISIBLE, RenderingServer.VIEWPORT_RENDER_INFO_DRAW_CALLS_IN_FRAME), RenderingServer.viewport_get_render_info(vrid, RenderingServer.VIEWPORT_RENDER_INFO_TYPE_VISIBLE, RenderingServer.VIEWPORT_RENDER_INFO_OBJECTS_IN_FRAME), Performance.get_monitor(Performance.OBJECT_NODE_COUNT)])
 	if OS.has_environment("BB_SHOT"):
 		shot_t += dt
 		if shot_t > float(OS.get_environment("BB_WAIT") if OS.has_environment("BB_WAIT") else "3"):
@@ -1446,6 +1492,7 @@ func do_wipe() -> void:
 
 # ---------------------------------------------------------------- Kaufen
 func buy(k: String) -> void:
+	invalidate()
 	var parts := k.split(":")
 	var t := parts[0]
 	var id := parts[1]
@@ -1767,9 +1814,8 @@ func managers_tick() -> void:
 			S["g"][bg.id] = cnt("g", bg.id) + 1
 			bought = true
 	if bought:
+		invalidate()
 		world.dirty = true
-		if view in ["werk", "deliv", "guard"]:
-			render()
 
 func ach_done(id: String) -> bool:
 	match id:
@@ -2007,6 +2053,7 @@ func escort_cost() -> float:
 	return 500.0 * pow(5.0, int(S["escort"]))
 
 func buy_extra(k: String) -> void:
+	invalidate()
 	var parts := k.split(":")
 	var t := parts[0]
 	var id := parts[1] if parts.size() > 1 else ""

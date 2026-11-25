@@ -23,6 +23,7 @@ var touches := {}
 var moved := 0.0
 var pinch := 0.0
 var dragging := false
+var last_build := -10.0
 var env: Environment
 var sun: DirectionalLight3D
 var lamps := []
@@ -158,11 +159,12 @@ func _ready() -> void:
 	add_child(cam)
 	cam.current = true
 	build_static()
+	merge_children(self, {beacon: true})
 	apply_quality()
 	fit()
 
 func build_static() -> void:
-	B(160, 0.2, 160, "#2f7d2b", 0, -0.1, 0)
+	B(160, 0.2, 160, "#2a6b26", 0, -0.1, 0)
 	B(35, 0.1, 31, "#8e9a9e", 0, 0.05, 0)
 	# Münzhalle (warm)
 	B(14, 0.14, 14, "#e2b874", -8, 0.12, -6)
@@ -209,13 +211,6 @@ func build_static() -> void:
 		var hd := B(0.5, 0.18, 0.5, "#3a4448", lp[0], 3.25, lp[1])
 		var bulb := B(0.36, 0.12, 0.36, "#fff2c0", lp[0], 3.12, lp[1])
 		bulb.material_override = lamp_mat
-		var ol := OmniLight3D.new()
-		ol.position = Vector3(lp[0], 2.9, lp[1])
-		ol.light_color = Color("#ffd27a")
-		ol.omni_range = 7.0
-		ol.light_energy = 0.0
-		add_child(ol)
-		lamps.append(ol)
 	for wx in [-12.0, -8.0, -4.0]:
 		var w1 := B(1.6, 0.5, 0.05, "#2a3a40", wx, 1.0, -12.82)
 		w1.material_override = win_mat
@@ -292,11 +287,19 @@ func build() -> void:
 				var sk := sphere(0.26, "#c9b48a", x0 + L + 0.35 + (k % 2) * 0.4, 0.6, z - 0.25 + k * 0.25, dyn)
 				sk.scale = Vector3(1, 1.15, 1)
 		# Ware auf dem Band
-		var its := []
-		for k in range(min(10, 3 + int(log(c + 1) / log(2.0)))):
-			var m: MeshInstance3D = B(0.55, 0.06, 0.32, l.col, x0, 0.6, z, dyn) if note else C(0.22, 0.22, 0.08, l.col, x0, 0.6, z, dyn)
-			its.append(m)
-		anim.belts.append({l = l, its = its, x0 = x0, L = L, ph = randf()})
+		var n_it: int = min(10, 3 + int(log(c + 1) / log(2.0)))
+		var spacing := L / n_it
+		var ig := Node3D.new()
+		dyn.add_child(ig)
+		for k in range(n_it):
+			if note:
+				B(0.55, 0.06, 0.32, l.col, x0 + k * spacing, 0.6, z, ig)
+			else:
+				C(0.22, 0.22, 0.08, l.col, x0 + k * spacing, 0.6, z, ig)
+		merge_deep(ig)
+		anim.belts.append({l = l, g = ig, spacing = spacing, ph = randf()})
+		var ramg := Node3D.new()
+		dyn.add_child(ramg)
 		# Maschinen: 1:1 bis 10 Plätze
 		var mc: int = min(c, 10)
 		var lv: int = min(int(ms / 2), 4)
@@ -314,8 +317,7 @@ func build() -> void:
 				B(0.72, 0.05, 1.27, "#ffc23d", mx, 1.42, z, dyn)
 				C(0.15, 0.15, 0.32, "#c9d2d5", mx, 1.86, z, dyn, 10)
 				B(0.42, 0.07, 0.46, "#20272a", mx, 0.6, z, dyn)
-				var ram := B(0.36, 0.22, 0.4, "#d9e0e3", mx, 1.15, z, dyn)
-				anim.pist.append({m = ram, ph = j * 0.7, y = 1.15, kind = "ram"})
+				B(0.36, 0.22, 0.4, "#d9e0e3", mx, 1.15, z, ramg)
 				C(0.22, 0.09, 0.3, "#aeb6b9", mx, 1.05, z - 0.82, dyn, 8)
 				C(0.21, 0.21, 0.03, l.col, mx, 1.2, z - 0.82, dyn, 10)
 				B(0.06, 0.5, 0.06, "#5a6163", mx, 0.6, z - 0.82, dyn)
@@ -332,7 +334,6 @@ func build() -> void:
 				B(0.96, 0.22, 1.34, "#e3e8ea", mx, 1.26, z, dyn)
 				var rl := C(0.17, 0.17, 0.9, "#2b3436", mx, 0.85, z, dyn, 10)
 				rl.rotation.x = PI / 2
-				anim.pist.append({m = rl, ph = j, kind = "roll"})
 				B(0.5, 0.22, 0.95, "#3a4448", mx, 1.48, z, dyn)
 				B(0.44, 0.06, 0.89, INK[j % 5], mx, 1.6, z, dyn)
 				B(0.3, 0.3, 0.06, "#d9e0e3", mx, 0.75, z + 0.7, dyn)
@@ -342,6 +343,9 @@ func build() -> void:
 				if ms > 0:
 					var lm2 := B(0.16, 0.12, 0.16, lamp, mx - 0.3, 1.42, z - 0.5, dyn)
 					lm2.material_override = mat(lamp, 1.0, true)
+		if ramg.get_child_count() > 0:
+			merge_deep(ramg)
+			anim.pist.append({m = ramg, ph = i * 0.9, y = 0.0, kind = "ram"})
 		if note:
 			B(0.7, 0.4, 1, "#3a4448", x0 + 0.2, 0.4, z, dyn)
 			B(0.55, 0.3, 0.75, "#f4f1e6", x0 + 0.2, 0.75, z, dyn)
@@ -356,10 +360,13 @@ func build() -> void:
 			var g11 := B(0.12, 0.12, 1.12, "#7fb0ff", x0 + L - 1.6, 1.5, z, dyn)
 			g11.material_override = mat("#7fb0ff", 1.0, true)
 		var wk: int = min(5, 1 + int(log(max(c, 1)) / log(2.0) / 1.4))
+		var wg := Node3D.new()
+		dyn.add_child(wg)
 		for j in range(wk):
-			var p := person("#3f6fb5" if note else "#ff7a1a", dyn, true)
+			var p := person("#3f6fb5" if note else "#ff7a1a", wg, true)
 			p.position = Vector3(x0 + 1.5 + j * 2.2, 0.2, z + 1.15)
-			anim.work.append({p = p, x = x0 + 1.5 + j * 2.2, ph = randf() * 6.0})
+		merge_deep(wg)
+		anim.work.append({p = wg, x = 0.0, ph = randf() * 6.0})
 	# Tresorlager wächst mit der Stufe
 	var lvl: int = min(int(S["lv"]), 6)
 	var wh := 0.7 + lvl * 0.12
@@ -384,6 +391,18 @@ func build() -> void:
 	build_extras()
 	build_security()
 	build_fleet()
+	var skip := {}
+	for p in anim.pist:
+		skip[p.m] = true
+	for c in anim.cams:
+		skip[c] = true
+	if anim.gate:
+		skip[anim.gate] = true
+	merge_children(dyn, skip)
+	for g in anim.guards:
+		merge_deep(g.p)
+	for tr in anim.trucks:
+		merge_deep(tr.t)
 	last_pile = -1
 
 func build_extras() -> void:
@@ -480,7 +499,7 @@ func build_security() -> void:
 	if g1 > 0:
 		B(1.8, 1.6, 1.8, "#efe7d4", 15.5, 0.9, 15, dyn)
 		B(2.1, 0.25, 2.1, "#c8102e", 15.5, 1.8, 15, dyn)
-	var ng: int = min(g1, 14)
+	var ng: int = min(g1, 8)
 	for j in range(ng):
 		anim.guards.append({p = person("#1f3a5f", dyn), u = float(j) / ng})
 	var cams := [[-17, -15], [17, -15], [-17, 15], [17, 11], [0, -15], [0, 2.4], [-17, 0], [17, 0]]
@@ -604,18 +623,21 @@ func piles() -> void:
 	add_child(pile_node)
 	for i in range(n):
 		B(1.1, 0.45, 0.7, "#6fae8f" if i % 3 == 2 else "#ffc23d", -14 + (i % 5) * 1.7, 0.42, 4.3 + int(i / 5) * 1.1, pile_node)
+	merge_children(pile_node, {})
 
 # ---------------------------------------------------------------- Wege
 const TRUCK_PATH := [[-2.8, 5.0], [6.0, 5.5], [14.5, 9.0], [14.5, 12.8], [42.0, 12.8]]
+var segs := []
+var seg_tot := 0.0
 func along(u: float) -> Array:
-	var segs := []
-	var tot := 0.0
-	for i in range(TRUCK_PATH.size() - 1):
-		var a: Array = TRUCK_PATH[i]
-		var b: Array = TRUCK_PATH[i + 1]
-		var l := Vector2(b[0] - a[0], b[1] - a[1]).length()
-		segs.append(l)
-		tot += l
+	if segs.is_empty():
+		for i in range(TRUCK_PATH.size() - 1):
+			var a: Array = TRUCK_PATH[i]
+			var b: Array = TRUCK_PATH[i + 1]
+			var l := Vector2(b[0] - a[0], b[1] - a[1]).length()
+			segs.append(l)
+			seg_tot += l
+	var tot := seg_tot
 	var d := u * tot
 	for i in range(segs.size()):
 		if d <= segs[i]:
@@ -639,14 +661,118 @@ func perim(u: float) -> Array:
 		d -= L[i]
 	return [P[0][0], P[0][1], 0.0]
 
+var vc_mat: StandardMaterial3D
+
+func vc_material() -> StandardMaterial3D:
+	if vc_mat == null:
+		vc_mat = StandardMaterial3D.new()
+		vc_mat.vertex_color_use_as_albedo = true
+		vc_mat.vertex_color_is_srgb = true
+		vc_mat.roughness = 0.78
+	return vc_mat
+
+func mergeable(m: Material) -> bool:
+	return m is StandardMaterial3D and not m.emission_enabled and m.transparency == BaseMaterial3D.TRANSPARENCY_DISABLED
+
+## Baut aus vielen Teilen ein Mesh: einfarbige Teile mit Vertex-Farben, Sonderteile je Material
+func bake_into(root: Node3D, items: Array) -> void:
+	var verts := PackedVector3Array()
+	var norms := PackedVector3Array()
+	var cols := PackedColorArray()
+	var idx := PackedInt32Array()
+	var shadow := false
+	var others := {}
+	var order := []
+	for it in items:
+		var mesh: Mesh = it[0]
+		var xf: Transform3D = it[1]
+		var m: Material = it[3]
+		if mergeable(m):
+			var arr := mesh.surface_get_arrays(0)
+			var v: PackedVector3Array = arr[Mesh.ARRAY_VERTEX]
+			var n: PackedVector3Array = arr[Mesh.ARRAY_NORMAL]
+			var ix: PackedInt32Array = arr[Mesh.ARRAY_INDEX]
+			var base := verts.size()
+			var col: Color = m.albedo_color
+			var basis := xf.basis
+			for k in range(v.size()):
+				verts.append(xf * v[k])
+				norms.append((basis * n[k]).normalized())
+				cols.append(col)
+			if ix.size() > 0:
+				for k in range(ix.size()):
+					idx.append(base + ix[k])
+			else:
+				for k in range(v.size()):
+					idx.append(base + k)
+			if it[4]:
+				shadow = true
+		else:
+			if not others.has(m):
+				var st := SurfaceTool.new()
+				st.begin(Mesh.PRIMITIVE_TRIANGLES)
+				others[m] = st
+				order.append(m)
+			others[m].append_from(mesh, 0, xf)
+	for it in items:
+		var node = it[2]
+		if node != null and is_instance_valid(node) and node.get_parent():
+			node.get_parent().remove_child(node)
+			node.free()
+	if verts.size() > 0:
+		var arrays := []
+		arrays.resize(Mesh.ARRAY_MAX)
+		arrays[Mesh.ARRAY_VERTEX] = verts
+		arrays[Mesh.ARRAY_NORMAL] = norms
+		arrays[Mesh.ARRAY_COLOR] = cols
+		arrays[Mesh.ARRAY_INDEX] = idx
+		var am := ArrayMesh.new()
+		am.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+		var out := MeshInstance3D.new()
+		out.mesh = am
+		out.material_override = vc_material()
+		out.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if shadow else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		root.add_child(out)
+	for m in order:
+		var mi2 := MeshInstance3D.new()
+		mi2.mesh = others[m].commit()
+		mi2.material_override = m
+		mi2.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		root.add_child(mi2)
+
+## Fasst alle direkten Mesh-Kinder (außer den beweglichen) zusammen
+func merge_children(parent: Node3D, skip: Dictionary) -> void:
+	var items := []
+	for c in parent.get_children():
+		if c is MeshInstance3D and not skip.has(c) and c.mesh != null:
+			items.append([c.mesh, c.transform, c, c.material_override, c.cast_shadow != GeometryInstance3D.SHADOW_CASTING_SETTING_OFF])
+	bake_into(parent, items)
+
+## Fasst alle Meshes unterhalb eines Knotens (auch verschachtelt) zusammen
+func merge_deep(root: Node3D) -> void:
+	var inv := root.global_transform.affine_inverse()
+	var found := []
+	collect_meshes(root, found)
+	var items := []
+	for c in found:
+		items.append([c.mesh, inv * c.global_transform, null, c.material_override, c.cast_shadow != GeometryInstance3D.SHADOW_CASTING_SETTING_OFF])
+	for ch in root.get_children():
+		root.remove_child(ch)
+		ch.free()
+	bake_into(root, items)
+
+func collect_meshes(n: Node, out: Array) -> void:
+	for c in n.get_children():
+		if c is MeshInstance3D and c.mesh != null:
+			out.append(c)
+		collect_meshes(c, out)
+
 func apply_quality() -> void:
 	var high: bool = int(main.S.get("gfx", 1)) == 1
 	sun.shadow_enabled = high
 	var vp := get_viewport()
 	if vp is SubViewport:
 		vp.msaa_3d = Viewport.MSAA_2X if high else Viewport.MSAA_DISABLED
-	for l in lamps:
-		l.visible = high
 
 # ---------------------------------------------------------------- Kamera & Eingabe
 func fit() -> void:
@@ -728,8 +854,9 @@ func handle_input(ev: InputEvent) -> void:
 # ---------------------------------------------------------------- Animation
 func _process(dt: float) -> void:
 	t += dt
-	if dirty:
+	if dirty and t - last_build > 1.5:
 		dirty = false
+		last_build = t
 		build()
 	fit()
 	piles()
@@ -742,9 +869,7 @@ func _process(dt: float) -> void:
 	for i in range(anim.belts.size()):
 		var b: Dictionary = anim.belts[i]
 		var s: float = sp[i] if i < sp.size() else 0.1
-		for k in range(b.its.size()):
-			var f := fposmod(t * s + float(k) / b.its.size() + b.ph, 1.0)
-			b.its[k].position.x = b.x0 + f * b.L
+		b.g.position.x = fposmod(t * s * 11.0 + b.ph * b.spacing, b.spacing)
 	for p in anim.pist:
 		match p.kind:
 			"roll":
@@ -752,10 +877,9 @@ func _process(dt: float) -> void:
 			"swing":
 				p.m.rotation.z = sin(t * 2.0 + p.ph) * 0.7
 			_:
-				p.m.position.y = p.y - abs(sin(t * 4.0 + p.ph)) * 0.3
+				p.m.position.y = -abs(sin(t * 4.0 + p.ph)) * 0.3
 	for w in anim.work:
-		w.p.position.x = w.x + sin(t * 0.7 + w.ph) * 1.2
-		w.p.rotation.y = PI / 2 if cos(t * 0.7 + w.ph) > 0 else -PI / 2
+		w.p.position.x = sin(t * 0.7 + w.ph) * 1.0
 	for g in anim.guards:
 		var pr := perim(g.u + t * 0.012)
 		g.p.position = Vector3(pr[0], 0.1, pr[1])
@@ -788,8 +912,6 @@ func _process(dt: float) -> void:
 	env.ambient_light_energy = lerp(0.32, 0.22, night)
 	lamp_mat.emission_energy_multiplier = night * 3.0
 	win_mat.emission_energy_multiplier = night * 2.5
-	for l in lamps:
-		l.light_energy = night * 1.6
 	var al: bool = main.S["warn"] > 0.0
 	if anim.gate:
 		anim.gate.position.z = 12.8 if al else 15.4
