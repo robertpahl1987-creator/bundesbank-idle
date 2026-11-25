@@ -225,13 +225,9 @@ func build_static() -> void:
 	B(14, 0.5, 0.3, "#3d6fb0", 8, 0.35, 1)
 	# Tresor
 	B(10, 0.14, 8, "#c9b27a", -10, 0.12, 7)
-	var door := C(1.1, 1.1, 0.3, "#a8b1b4", -4.8, 1.3, 7)
-	door.rotation.z = PI / 2
-	var dc := C(0.5, 0.5, 0.35, "#ffc23d", -4.75, 1.3, 7)
-	dc.rotation.z = PI / 2
 	# Hof, Rampe, Straße
 	B(19, 0.08, 9, "#4d5559", 6, 0.12, 7.5)
-	B(1.2, 0.6, 7, "#a9b0b0", -3.6, 0.4, 7)
+	B(1.2, 0.6, 3.2, "#a9b0b0", -3.6, 0.4, 9.4)
 	B(80, 0.06, 3, "#4a5154", 30, 0.1, 12.8)
 	for i in range(14):
 		B(1.4, 0.07, 0.15, "#ffffff", 2 + i * 4, 0.12, 12.8)
@@ -264,7 +260,7 @@ func build_static() -> void:
 		w2.material_override = win_mat
 	label3d("Münzhalle", -8, 3.4, -14)
 	label3d("Druckhalle", 8, 3.4, -14)
-	label3d("Tresor", -10, 3.6, 7)
+	label3d("Tresor", -10, 4.4, 4.0)
 	label3d("Fuhrpark", 6, 2.4, 7.5)
 	for i in range(3):
 		var r := person("#222831", self)
@@ -418,13 +414,10 @@ func build() -> void:
 		anim.work.append({p = wg, x = 0.0, ph = randf() * 6.0})
 	# Tresorlager wächst mit der Stufe
 	var lvl: int = min(int(S["lv"]), 6)
-	var wh := 0.7 + lvl * 0.12
-	B(10, wh, 0.3, "#55626a", -10, wh / 2 + 0.1, 3, dyn)
-	B(0.3, 2 + lvl * 0.25, 8, "#55626a", -15, 1.1 + lvl * 0.12, 7, dyn)
-	B(0.3, wh, 8, "#55626a", -5, wh / 2 + 0.1, 7, dyn)
-	B(10, wh, 0.3, "#55626a", -10, wh / 2 + 0.1, 11, dyn)
+	var wh := 1.0
+	build_vault(lvl)
 	for k in range(lvl):
-		B(0.25, 0.25, 0.25, "#ffc23d", -14 + k * 0.45, wh + 0.25, 11, dyn)
+		B(0.25, 0.25, 0.25, "#ffc23d", -14 + k * 0.45, 1.25, 11.3, dyn)
 	build_racks(lvl)
 	if main.has_flag("t", "t12"):
 		B(6, 2.6, 5, "#d9e2e8", 21, 1.3, -6, dyn)
@@ -448,12 +441,89 @@ func build() -> void:
 		skip[c] = true
 	if anim.gate:
 		skip[anim.gate] = true
+	if anim.has("vdoor"):
+		merge_deep(anim.vwheel)
 	merge_children(dyn, skip)
 	for g in anim.guards:
 		merge_deep(g.p)
 	for tr in anim.trucks:
 		merge_deep(tr.t)
 	last_pile = -1
+
+# ---------------------------------------------------------------- Tresorgebäude mit Tresortür
+func build_vault(lvl: int) -> void:
+	var conc := "#4f585d"
+	var steel := "#6d777c"
+	var H := 2.9
+	var T := 0.6
+	# Boden aus Stahlplatten
+	for xi in range(5):
+		for zi in range(4):
+			B(1.94, 0.03, 1.94, "#9aa3a8" if (xi + zi) % 2 == 0 else "#8a9398", -14 + xi * 2.0, 0.2, 4 + zi * 2.0, dyn)
+	# Hintere und linke Wand: hoch, Stahlbeton mit Stahlverkleidung
+	B(10.6, H, T, conc, -10, H / 2 + 0.1, 2.75, dyn)
+	B(T, H, 8.9, conc, -15.3, H / 2 + 0.1, 7.0, dyn)
+	B(10.0, 0.12, 0.08, "#3a4448", -10, H - 0.3, 3.08, dyn)
+	B(10.0, 0.12, 0.08, "#3a4448", -10, 0.7, 3.08, dyn)
+	for k in range(9):
+		B(0.08, H - 0.4, 0.06, steel, -14.5 + k * 1.15, H / 2 + 0.1, 3.08, dyn)
+	# Rechte Wand mit Türöffnung (Tür zeigt zum Hof)
+	B(T, H, 2.9, conc, -4.7, H / 2 + 0.1, 4.0, dyn)
+	B(T, H, 2.9, conc, -4.7, H / 2 + 0.1, 10.0, dyn)
+	B(T, 0.6, 3.2, conc, -4.7, H - 0.2, 7.0, dyn)
+	# Türrahmen aus Stahl mit Warnstreifen
+	B(0.7, 0.2, 2.9, "#3a4448", -4.7, 0.22, 7.0, dyn)
+	for k in range(6):
+		B(0.72, 0.08, 0.25, "#ffc21a" if k % 2 == 0 else "#1b2224", -4.7, 0.34, 5.85 + k * 0.46, dyn)
+	B(0.75, 2.3, 0.25, steel, -4.7, 1.25, 5.62, dyn)
+	B(0.75, 2.3, 0.25, steel, -4.7, 1.25, 8.38, dyn)
+	B(0.75, 0.25, 3.0, steel, -4.7, 2.42, 7.0, dyn)
+	# Vordere Wand niedrig (Einblick), mit dickem Stahlabschluss
+	B(10.6, 1.0, T, conc, -10, 0.6, 11.25, dyn)
+	B(10.6, 0.1, T + 0.1, steel, -10, 1.15, 11.25, dyn)
+	# Schild
+	B(2.2, 0.5, 0.06, "#0e8a7c", -4.36, 2.75, 7.0, dyn).rotation.y = PI / 2
+	# Runde Tresortür an Scharnier (öffnet nach außen)
+	var hinge := Node3D.new()
+	hinge.position = Vector3(-4.25, 1.22, 5.85)
+	dyn.add_child(hinge)
+	var door := Node3D.new()
+	door.position = Vector3(0.0, 0.0, 1.15)
+	hinge.add_child(door)
+	var rim := C(1.2, 1.2, 0.46, "#2b3436", 0, 0, 0, door, 28)
+	rim.rotation.z = PI / 2
+	var body := C(1.12, 1.12, 0.5, "#c3cbcf", 0, 0, 0, door, 28)
+	body.rotation.z = PI / 2
+	var face := C(1.0, 1.0, 0.52, "#aeb7bc", 0, 0, 0, door, 28)
+	face.rotation.z = PI / 2
+	var plate := C(0.62, 0.62, 0.56, "#d9e0e3", 0, 0, 0, door, 24)
+	plate.rotation.z = PI / 2
+	# Riegelbolzen rundum
+	for k in range(12):
+		var a := k * PI / 6
+		var bolt := C(0.07, 0.07, 0.34, "#e6ebee", 0, sin(a) * 1.0, cos(a) * 1.0, door, 8)
+		bolt.rotation.x = PI / 2
+		bolt.rotation.z = -a
+		bolt.position = Vector3(0.0, sin(a) * 1.16, cos(a) * 1.16)
+		bolt.rotation = Vector3(a, 0, 0)
+	# Handrad mit drei Speichen
+	var wheel := Node3D.new()
+	wheel.position = Vector3(0.34, 0, 0)
+	door.add_child(wheel)
+	var hub := C(0.13, 0.13, 0.12, "#ffc23d", 0, 0, 0, wheel, 12)
+	hub.rotation.z = PI / 2
+	for k in range(3):
+		var sp := B(0.06, 0.9, 0.07, "#ffc23d", 0, 0, 0, wheel)
+		sp.rotation.x = k * PI / 3
+	for k in range(12):
+		var a2 := k * PI / 6
+		B(0.07, 0.1, 0.24, "#ffc23d", 0.0, sin(a2) * 0.45, cos(a2) * 0.45, wheel).rotation.x = -a2
+	# Scharnier
+	C(0.16, 0.16, 1.6, "#5a6670", 0, 0, 0, hinge, 10)
+	B(0.5, 0.18, 0.3, "#5a6670", 0.0, 0.5, 0.25, hinge)
+	B(0.5, 0.18, 0.3, "#5a6670", 0.0, -0.5, 0.25, hinge)
+	anim["vdoor"] = hinge
+	anim["vwheel"] = wheel
 
 # ---------------------------------------------------------------- Tresorlager mit Regalen
 const RACK_Y := [0.2, 0.92, 1.64]
@@ -655,12 +725,11 @@ func build_security() -> void:
 		anim.cams.append(B(0.6, 0.3, 0.3, "#e8ecee", x, 3.05, z, dyn))
 	beacon.visible = cnt("g", "g4") > 0
 	if cnt("g", "g5") > 0:
-		var d2 := C(1.45, 1.45, 0.22, "#ffc23d", -4.62, 1.3, 7, dyn, 24)
-		d2.rotation.z = PI / 2
-		for k in range(8):
-			var a := k * PI / 4
-			var bolt := C(0.09, 0.09, 0.3, "#3a4448", -4.55, 1.3 + sin(a) * 1.25, 7 + cos(a) * 1.25, dyn, 6)
-			bolt.rotation.z = PI / 2
+		for k in range(4):
+			var las := B(0.03, 0.03, 2.0, "#ff2030", -5.9, 0.45 + k * 0.4, 7, dyn)
+			las.material_override = mat("#ff2030", 1.0, true)
+		B(0.18, 1.9, 0.18, "#2b3436", -5.9, 1.0, 5.95, dyn)
+		B(0.18, 1.9, 0.18, "#2b3436", -5.9, 1.0, 8.05, dyn)
 	for j in range(min(cnt("g", "g6"), 3)):
 		var x2 := 20.0 + j * 2.6
 		B(2, 0.7, 1, "#f4f5f2", x2, 0.5, 10.2, dyn)
@@ -1051,6 +1120,10 @@ func _process(dt: float) -> void:
 		var u := fposmod(t * 0.04, 1.0)
 		anim.plane.position = Vector3(-40 + u * 90, 12, -30 + u * 50)
 		anim.plane.rotation.y = -atan2(50, 90)
+	if anim.has("vdoor") and is_instance_valid(anim.vdoor):
+		var target := 0.0 if main.S["warn"] > 0.0 else 1.45
+		anim.vdoor.rotation.y = lerp(anim.vdoor.rotation.y, target, min(1.0, 0.04 * 60.0 * get_process_delta_time()))
+		anim.vwheel.rotation.x = t * (2.5 if main.S["warn"] > 0.0 else 0.25)
 	if anim.has("fork") and is_instance_valid(anim.fork):
 		var fu := fposmod(t * 0.08, 2.0)
 		var fx: float = -12.5 + (fu if fu < 1.0 else 2.0 - fu) * 5.0
