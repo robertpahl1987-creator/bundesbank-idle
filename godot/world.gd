@@ -107,6 +107,51 @@ func sphere(r: float, c: String, x: float, y: float, z: float, p: Node3D) -> Mes
 	p.add_child(mi)
 	return mi
 
+# Echte Euro-Münzen: Metallfarben, Größen und Bimetall-Aufbau
+const COIN_SPEC := {
+	"c1": {r=0.17, ring="copper", core="copper"},
+	"c10": {r=0.2, ring="gold", core="gold"},
+	"c50": {r=0.24, ring="gold", core="gold"},
+	"e1": {r=0.23, ring="gold", core="silver"},
+	"e2": {r=0.26, ring="silver", core="gold"},
+}
+const METALS := {
+	"copper": ["#c8763f", "#a85e30"],
+	"gold": ["#e2bf55", "#c9a23a"],
+	"silver": ["#d4d9dc", "#aab2b6"],
+}
+
+func metal(kind: String, shade := 0) -> StandardMaterial3D:
+	var c: String = METALS[kind][shade]
+	var k := "metal_" + c
+	if mats.has(k):
+		return mats[k]
+	var m := StandardMaterial3D.new()
+	m.albedo_color = Color(c)
+	m.metallic = 0.65
+	m.roughness = 0.32
+	m.metallic_specular = 0.7
+	mats[k] = m
+	return m
+
+## Eine Münze flach liegend: Rand, vertiefte Bildfläche, Kern (bei 1 € und 2 € andersfarbig)
+func coin(id: String, x: float, y: float, z: float, p: Node3D, scale_f := 1.0) -> void:
+	var sp: Dictionary = COIN_SPEC.get(id, COIN_SPEC["c10"])
+	var r: float = sp.r * scale_f
+	var h := 0.07 * scale_f
+	var rim := C(r, r, h, "#000000", x, y, z, p, 20)
+	rim.material_override = metal(sp.ring, 0)
+	var field := C(r * 0.86, r * 0.86, h + 0.006, "#000000", x, y + 0.001, z, p, 20)
+	field.material_override = metal(sp.ring, 1)
+	if sp.core != sp.ring:
+		var core := C(r * 0.6, r * 0.6, h + 0.014, "#000000", x, y + 0.002, z, p, 18)
+		core.material_override = metal(sp.core, 0)
+		var core_in := C(r * 0.5, r * 0.5, h + 0.018, "#000000", x, y + 0.003, z, p, 18)
+		core_in.material_override = metal(sp.core, 1)
+	else:
+		var relief := C(r * 0.42, r * 0.42, h + 0.014, "#000000", x, y + 0.002, z, p, 16)
+		relief.material_override = metal(sp.ring, 0)
+
 func person(col: String, p: Node3D, helmet := false) -> Node3D:
 	var g := Node3D.new()
 	B(0.34, 0.3, 0.24, "#2b3436", 0, 0.15, 0, g)
@@ -283,9 +328,11 @@ func build() -> void:
 			for k in range(4):
 				B(0.38, 0.22, 0.42, l.col, x0 + L + 0.33 + (k % 2) * 0.45, 0.44 + int(k / 2) * 0.22, z, dyn)
 		else:
-			for k in range(3):
-				var sk := sphere(0.26, "#c9b48a", x0 + L + 0.35 + (k % 2) * 0.4, 0.6, z - 0.25 + k * 0.25, dyn)
-				sk.scale = Vector3(1, 1.15, 1)
+			var sk := sphere(0.26, "#c9b48a", x0 + L + 0.3, 0.6, z - 0.3, dyn)
+			sk.scale = Vector3(1, 1.15, 1)
+			for q2 in range(4):
+				for st in range(4):
+					coin(l.id, x0 + L + 0.42 + (q2 % 2) * 0.42, 0.37 + st * 0.075, z + 0.05 + int(q2 / 2) * 0.4, dyn, 0.85)
 		# Ware auf dem Band
 		var n_it: int = min(10, 3 + int(log(c + 1) / log(2.0)))
 		var spacing := L / n_it
@@ -295,7 +342,7 @@ func build() -> void:
 			if note:
 				B(0.55, 0.06, 0.32, l.col, x0 + k * spacing, 0.6, z, ig)
 			else:
-				C(0.22, 0.22, 0.08, l.col, x0 + k * spacing, 0.6, z, ig)
+				coin(l.id, x0 + k * spacing, 0.6, z, ig)
 		merge_deep(ig)
 		anim.belts.append({l = l, g = ig, spacing = spacing, ph = randf()})
 		var ramg := Node3D.new()
@@ -317,9 +364,11 @@ func build() -> void:
 				B(0.72, 0.05, 1.27, "#ffc23d", mx, 1.42, z, dyn)
 				C(0.15, 0.15, 0.32, "#c9d2d5", mx, 1.86, z, dyn, 10)
 				B(0.42, 0.07, 0.46, "#20272a", mx, 0.6, z, dyn)
+				coin(l.id, mx, 0.67, z, dyn, 0.9)
 				B(0.36, 0.22, 0.4, "#d9e0e3", mx, 1.15, z, ramg)
 				C(0.22, 0.09, 0.3, "#aeb6b9", mx, 1.05, z - 0.82, dyn, 8)
-				C(0.21, 0.21, 0.03, l.col, mx, 1.2, z - 0.82, dyn, 10)
+				var blank_m := C(0.21, 0.21, 0.03, "#000000", mx, 1.2, z - 0.82, dyn, 10)
+				blank_m.material_override = metal(COIN_SPEC.get(l.id, COIN_SPEC["c10"]).ring, 1)
 				B(0.06, 0.5, 0.06, "#5a6163", mx, 0.6, z - 0.82, dyn)
 				B(0.05, 0.55, 0.05, "#5a6163", mx, 0.45, z + 0.85, dyn)
 				B(0.3, 0.22, 0.1, "#d9e0e3", mx, 0.85, z + 0.85, dyn)
@@ -376,6 +425,7 @@ func build() -> void:
 	B(10, wh, 0.3, "#55626a", -10, wh / 2 + 0.1, 11, dyn)
 	for k in range(lvl):
 		B(0.25, 0.25, 0.25, "#ffc23d", -14 + k * 0.45, wh + 0.25, 11, dyn)
+	build_racks(lvl)
 	if main.has_flag("t", "t12"):
 		B(6, 2.6, 5, "#d9e2e8", 21, 1.3, -6, dyn)
 		B(6.2, 0.25, 5.2, "#3a6fd8", 21, 2.7, -6, dyn)
@@ -404,6 +454,101 @@ func build() -> void:
 	for tr in anim.trucks:
 		merge_deep(tr.t)
 	last_pile = -1
+
+# ---------------------------------------------------------------- Tresorlager mit Regalen
+const RACK_Y := [0.2, 0.92, 1.64]
+
+func rack_sections(lvl: int) -> Array:
+	# [mitte_x, mitte_z, quer]  quer=true: Regal an der linken Wand
+	var out := []
+	for k in range(min(2 + lvl, 5)):
+		out.append([-13.6 + k * 1.75, 3.75, false])
+	for k in range(min(max(0, lvl - 2), 3)):
+		out.append([-14.25, 5.6 + k * 1.75, true])
+	return out
+
+func floor_slots(lvl: int) -> Array:
+	var out := []
+	var grid := [[-11.6, 6.6], [-9.8, 6.6], [-8.0, 6.6], [-11.6, 8.5], [-9.8, 8.5], [-8.0, 8.5], [-11.6, 10.2], [-9.8, 10.2], [-8.0, 10.2]]
+	for k in range(min(2 + lvl, 9)):
+		out.append(Vector3(grid[k][0], 0.2, grid[k][1]))
+	return out
+
+func store_slots(lvl: int) -> Array:
+	var out := floor_slots(lvl)
+	for sec in rack_sections(lvl):
+		for y in RACK_Y:
+			if sec[2]:
+				out.append(Vector3(sec[0], y + 0.08, sec[1]))
+			else:
+				out.append(Vector3(sec[0], y + 0.08, sec[1]))
+	return out
+
+func build_racks(lvl: int) -> void:
+	for sec in rack_sections(lvl):
+		var cx: float = sec[0]
+		var cz: float = sec[1]
+		var quer: bool = sec[2]
+		var w := 1.65
+		var d := 1.0
+		for ox in [-w / 2, w / 2]:
+			for oz in [-d / 2, d / 2]:
+				var px: float = cx + (oz if quer else ox)
+				var pz: float = cz + (ox if quer else oz)
+				B(0.08, 2.25, 0.08, "#2f5fbf", px, 1.2, pz, dyn)
+		for y in RACK_Y:
+			for oz in [-d / 2, d / 2]:
+				if quer:
+					B(0.07, 0.09, w, "#ff7a1a", cx + oz, y + 0.02, cz, dyn)
+				else:
+					B(w, 0.09, 0.07, "#ff7a1a", cx, y + 0.02, cz + oz, dyn)
+	# Bodenmarkierungen für Stellplätze
+	for fs in floor_slots(lvl):
+		B(1.35, 0.02, 1.15, "#ffd21a", fs.x, 0.2, fs.z, dyn)
+		B(1.2, 0.03, 1.0, "#d8c79a", fs.x, 0.21, fs.z, dyn)
+	# Gabelstapler
+	var fk := Node3D.new()
+	dyn.add_child(fk)
+	B(1.0, 0.5, 0.7, "#ffc21a", 0, 0.45, 0, fk)
+	B(0.5, 0.45, 0.6, "#2b3436", -0.15, 0.92, 0, fk)
+	B(0.06, 1.5, 0.06, "#3a4448", 0.55, 0.9, -0.22, fk)
+	B(0.06, 1.5, 0.06, "#3a4448", 0.55, 0.9, 0.22, fk)
+	B(0.7, 0.05, 0.1, "#3a4448", 0.95, 0.3, -0.18, fk)
+	B(0.7, 0.05, 0.1, "#3a4448", 0.95, 0.3, 0.18, fk)
+	B(0.8, 0.12, 0.8, "#3a2a1a", -0.45, 0.25, 0, fk)
+	for wpos in [[-0.3, 0.36], [0.3, 0.36], [-0.3, -0.36], [0.3, -0.36]]:
+		var wm := C(0.17, 0.17, 0.12, "#1b2224", wpos[0], 0.2, wpos[1], fk, 8)
+		wm.rotation.x = PI / 2
+	person("#ff7a1a", fk, true).position = Vector3(-0.15, 0.55, 0)
+	merge_deep(fk)
+	fk.position = Vector3(-10, 0.13, 5.0)
+	anim["fork"] = fk
+
+## Eine Palette mit Ware: Banknotenbündel in Folie oder Münzkisten
+func pallet(pos: Vector3, kind: int, p: Node3D) -> void:
+	B(1.15, 0.12, 0.95, "#a5814f", pos.x, pos.y + 0.06, pos.z, p)
+	B(1.15, 0.04, 0.12, "#7d5f37", pos.x, pos.y + 0.0, pos.z - 0.38, p)
+	B(1.15, 0.04, 0.12, "#7d5f37", pos.x, pos.y + 0.0, pos.z + 0.38, p)
+	var notes := ["#9aa3a8", "#d96a6a", "#5b8fd0", "#e09a3a", "#6fae8f", "#d9c25a"]
+	if kind % 3 == 2:
+		# Münzkisten mit Münzrollen
+		for k in range(4):
+			var bx := pos.x - 0.27 + (k % 2) * 0.54
+			var bz := pos.z - 0.22 + int(k / 2) * 0.44
+			B(0.5, 0.32, 0.4, "#5a6670", bx, pos.y + 0.28, bz, p)
+			for q in range(3):
+				var roll := C(0.06, 0.06, 0.42, "#e2bf55" if q != 1 else "#c8763f", bx - 0.13 + q * 0.13, pos.y + 0.47, bz, p, 8)
+				roll.rotation.z = PI / 2
+	else:
+		# Banknotenbündel, gestapelt und in Folie
+		var col: String = notes[kind % notes.size()]
+		for lay in range(3):
+			for k in range(4):
+				var bx2 := pos.x - 0.27 + (k % 2) * 0.54
+				var bz2 := pos.z - 0.22 + int(k / 2) * 0.44
+				B(0.5, 0.15, 0.4, col, bx2, pos.y + 0.2 + lay * 0.16, bz2, p)
+				B(0.12, 0.152, 0.402, "#f4f1e6", bx2, pos.y + 0.2 + lay * 0.16, bz2, p)
+		B(1.1, 0.5, 0.92, "#e8f4ff", pos.x, pos.y + 0.37, pos.z, p, 0.28)
 
 func build_extras() -> void:
 	var S: Dictionary = main.S
@@ -510,8 +655,12 @@ func build_security() -> void:
 		anim.cams.append(B(0.6, 0.3, 0.3, "#e8ecee", x, 3.05, z, dyn))
 	beacon.visible = cnt("g", "g4") > 0
 	if cnt("g", "g5") > 0:
-		B(1.4, 1.4, 1.4, "#5a6670", -13.8, 0.85, 9.7, dyn)
-		B(1.4, 1.4, 1.4, "#5a6670", -12.2, 0.85, 9.7, dyn)
+		var d2 := C(1.45, 1.45, 0.22, "#ffc23d", -4.62, 1.3, 7, dyn, 24)
+		d2.rotation.z = PI / 2
+		for k in range(8):
+			var a := k * PI / 4
+			var bolt := C(0.09, 0.09, 0.3, "#3a4448", -4.55, 1.3 + sin(a) * 1.25, 7 + cos(a) * 1.25, dyn, 6)
+			bolt.rotation.z = PI / 2
 	for j in range(min(cnt("g", "g6"), 3)):
 		var x2 := 20.0 + j * 2.6
 		B(2, 0.7, 1, "#f4f5f2", x2, 0.5, 10.2, dyn)
@@ -601,19 +750,22 @@ func build_fleet() -> void:
 		dyn.add_child(pl)
 		anim.plane = pl
 	if cnt("v", "v7") > 0:
-		B(2.4, 0.1, 2.4, "#5a6163", -10, 2.25, 9, dyn)
+		B(3.2, 0.1, 3.2, "#5a6163", -22, 0.12, 4, dyn)
+		B(1.6, 0.11, 0.25, "#ffffff", -22, 0.14, 4, dyn)
 		var h := Node3D.new()
 		B(1.4, 0.6, 0.7, "#c8102e", 0, 0, 0, h)
 		anim.rotor = B(2.6, 0.04, 0.15, "#2b3436", 0, 0.4, 0, h)
-		h.position = Vector3(-10, 2.65, 9)
+		h.position = Vector3(-22, 0.55, 4)
 		dyn.add_child(h)
 	if cnt("v", "v8") > 0:
 		B(4, 2.4, 3.2, "#3f6f7d", 11, 1.3, 5.2, dyn)
 		B(4.2, 0.2, 3.4, "#0e8a7c", 11, 2.6, 5.2, dyn)
 
 func piles() -> void:
-	var slots: int = 10 + 4 * min(int(main.S["lv"]), 5)
-	var n := int(round(min(1.0, float(main.S["stock"]) / main.cap()) * slots))
+	var lvl: int = min(int(main.S["lv"]), 6)
+	var all := store_slots(lvl)
+	var slots: int = all.size()
+	var n := int(ceil(min(1.0, float(main.S["stock"]) / main.cap()) * slots))
 	if n == last_pile:
 		return
 	last_pile = n
@@ -622,7 +774,7 @@ func piles() -> void:
 	pile_node = Node3D.new()
 	add_child(pile_node)
 	for i in range(n):
-		B(1.1, 0.45, 0.7, "#6fae8f" if i % 3 == 2 else "#ffc23d", -14 + (i % 5) * 1.7, 0.42, 4.3 + int(i / 5) * 1.1, pile_node)
+		pallet(all[i], i, pile_node)
 	merge_children(pile_node, {})
 
 # ---------------------------------------------------------------- Wege
@@ -672,7 +824,7 @@ func vc_material() -> StandardMaterial3D:
 	return vc_mat
 
 func mergeable(m: Material) -> bool:
-	return m is StandardMaterial3D and not m.emission_enabled and m.transparency == BaseMaterial3D.TRANSPARENCY_DISABLED
+	return m is StandardMaterial3D and not m.emission_enabled and m.transparency == BaseMaterial3D.TRANSPARENCY_DISABLED and m.metallic < 0.5
 
 ## Baut aus vielen Teilen ein Mesh: einfarbige Teile mit Vertex-Farben, Sonderteile je Material
 func bake_into(root: Node3D, items: Array) -> void:
@@ -899,6 +1051,11 @@ func _process(dt: float) -> void:
 		var u := fposmod(t * 0.04, 1.0)
 		anim.plane.position = Vector3(-40 + u * 90, 12, -30 + u * 50)
 		anim.plane.rotation.y = -atan2(50, 90)
+	if anim.has("fork") and is_instance_valid(anim.fork):
+		var fu := fposmod(t * 0.08, 2.0)
+		var fx: float = -12.5 + (fu if fu < 1.0 else 2.0 - fu) * 5.0
+		anim.fork.position.x = fx
+		anim.fork.rotation.y = 0.0 if fu < 1.0 else PI
 	if anim.rotor:
 		anim.rotor.rotation.y = t * 14.0
 	var ph: float = main.day_phase()

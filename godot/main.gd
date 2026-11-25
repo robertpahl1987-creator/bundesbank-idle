@@ -762,6 +762,12 @@ func fling_tick(dt: float) -> void:
 	if scroll_pos <= 0.0 or scroll_pos >= max_scroll():
 		fling = 0.0
 
+func test_zoom() -> void:
+	world.zoom = float(OS.get_environment("BB_Z")) if OS.has_environment("BB_Z") else 3.2
+	world.tx = float(OS.get_environment("BB_TX")) if OS.has_environment("BB_TX") else -6.0
+	world.tz = float(OS.get_environment("BB_TZ")) if OS.has_environment("BB_TZ") else -6.5
+	toggle_world()
+
 func test_scroll() -> void:
 	var a := InputEventScreenTouch.new()
 	a.index = 0
