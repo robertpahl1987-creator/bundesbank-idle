@@ -24,16 +24,17 @@ body{background:var(--bg);color:var(--ink);font:16px/1.45 Barlow,system-ui,sans-
 .inc{font-size:13px;opacity:.85}
 .shield{border:0;border-radius:20px;min-height:40px;padding:0 12px;font:700 15px 'Barlow Condensed';background:rgba(255,255,255,.15);color:#fff;white-space:nowrap;cursor:pointer}
 .shield.hot{background:var(--red)}
-.r2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1.2fr);gap:6px;margin-top:6px;font-size:12px}
+.r2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1.2fr);gap:6px;margin-top:5px;font-size:11px}
 .r2 div{background:rgba(255,255,255,.1);border-radius:8px;padding:4px 8px}
-.r2 small{display:block;opacity:.75}.r2 b{font:700 15px 'Barlow Condensed';white-space:nowrap}
+.r2 small{display:block;opacity:.75}.r2 b{font:700 14px 'Barlow Condensed';white-space:nowrap}
 .sbar{height:4px;background:rgba(255,255,255,.2);border-radius:3px;overflow:hidden;margin-top:2px}.sbar i{display:block;height:100%;background:#fff}
 .sbar.hot i{background:#ff8a99}
-.world{flex:none;position:relative;height:clamp(210px,40dvh,460px);background:#cfe3e1;overflow:hidden;touch-action:none}
+.world{flex:none;position:relative;height:clamp(170px,30dvh,380px);transition:height .25s;background:#cfe3e1;overflow:hidden;touch-action:none}
+.world.big{height:clamp(260px,58dvh,640px)}
 .world canvas{display:block;width:100%;height:100%}
-.wbtn{position:absolute;right:8px;display:flex;flex-direction:column;gap:6px;bottom:8px}
-.wbtn button{width:40px;height:40px;border-radius:10px;border:0;background:rgba(255,255,255,.9);color:#0b5d57;font:700 20px Barlow;box-shadow:0 1px 4px rgba(0,0,0,.2);cursor:pointer}
-.whint{position:absolute;left:8px;bottom:8px;background:rgba(255,255,255,.85);color:#3b4a46;font-size:12px;border-radius:8px;padding:3px 8px;pointer-events:none}
+.wbtn{position:absolute;right:6px;display:flex;flex-direction:column;gap:5px;bottom:6px}
+.wbtn button{width:36px;height:36px;border-radius:10px;border:0;background:rgba(255,255,255,.9);color:#0b5d57;font:700 20px Barlow;box-shadow:0 1px 4px rgba(0,0,0,.2);cursor:pointer}
+.whint{position:absolute;left:6px;bottom:6px;background:rgba(255,255,255,.85);color:#3b4a46;font-size:12px;border-radius:8px;padding:3px 8px;pointer-events:none}
 .hint{position:absolute;left:8px;right:56px;top:8px;font-size:13px;font-weight:600;background:#fff;color:#c8102e;border-radius:8px;padding:4px 10px;display:none;box-shadow:0 1px 4px rgba(0,0,0,.15)}
 .hint.on{display:block}
 .alarm{position:absolute;left:8px;right:8px;top:8px;display:none;background:#c8102e;color:#fff;border-radius:12px;padding:8px 10px;font-weight:600;align-items:center;justify-content:space-between;gap:10px;z-index:3}
@@ -41,17 +42,17 @@ body{background:var(--bg);color:var(--ink);font:16px/1.45 Barlow,system-ui,sans-
 .alarm button{border:0;background:#fff;color:#c8102e;border-radius:8px;min-height:40px;padding:0 12px;font:700 15px 'Barlow Condensed';flex:none;cursor:pointer}
 @keyframes blink{50%{filter:brightness(1.2)}}
 .nogl{position:absolute;inset:0;display:none;place-items:center;text-align:center;padding:20px;color:#3b4a46}
-main{flex:1;overflow-y:auto;padding:10px 12px 16px;width:100%;max-width:760px;margin:0 auto;-webkit-overflow-scrolling:touch}
+main{flex:1;overflow-y:auto;padding:8px 10px 14px;width:100%;max-width:760px;margin:0 auto;-webkit-overflow-scrolling:touch}
 h2{font:700 22px/1.1 'Barlow Condensed',sans-serif;margin:2px 0}
 .lead{color:var(--mut);font-size:14px;margin:0 0 8px}
 .seg{display:flex;gap:4px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:4px;margin-bottom:8px}
-.seg button{flex:1;min-height:42px;border:0;border-radius:9px;background:transparent;color:var(--ink);font:600 15px Barlow;cursor:pointer;line-height:1.1}
+.seg button{flex:1;min-height:38px;border:0;border-radius:9px;background:transparent;color:var(--ink);font:600 15px Barlow;cursor:pointer;line-height:1.1}
 .seg button small{display:block;font-size:12px;color:var(--mut)}
 .seg button.on{background:var(--main);color:#fff}.seg button.on small{color:#fff;opacity:.85}
 .amt{display:flex;gap:6px;align-items:center;justify-content:flex-end;margin-bottom:8px;font-size:13px;color:var(--mut)}
 .amt button{min-height:34px;min-width:48px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--ink);font:600 14px Barlow;cursor:pointer}
 .amt button.on{border-color:var(--main);color:var(--main);box-shadow:inset 0 0 0 1px var(--main)}
-.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:8px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:7px 10px;margin-bottom:6px}
 .card.empty{background:transparent;border:2px dashed var(--line)}
 .card.done{border-color:var(--main)}
 .ch{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
@@ -59,7 +60,7 @@ h2{font:700 22px/1.1 'Barlow Condensed',sans-serif;margin:2px 0}
 .sw{display:inline-block;width:12px;height:12px;border-radius:50%;margin-right:6px;vertical-align:-1px;box-shadow:inset 0 0 0 1px rgba(0,0,0,.25)}
 .row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;margin-top:4px}
 .row small,.sm{color:var(--mut);font-size:13px;display:block}
-.buy{min-height:44px;min-width:104px;border-radius:10px;border:0;background:var(--main);color:#fff;font:700 15px 'Barlow Condensed',sans-serif;cursor:pointer;white-space:nowrap;padding:0 12px}
+.buy{min-height:40px;min-width:96px;border-radius:10px;border:0;background:var(--main);color:#fff;font:700 15px 'Barlow Condensed',sans-serif;cursor:pointer;white-space:nowrap;padding:0 12px}
 .buy:disabled{background:var(--line);color:var(--mut);cursor:default}
 .buy.red{background:var(--red)}
 button:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
@@ -96,7 +97,7 @@ button:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
   <div class="hint" id="hint"></div>
   <div class="alarm" id="alarm"><span id="alarmT"></span><button data-go="guard">Zum Schutz</button></div>
   <div class="whint">Ziehen zum Bewegen · Halle antippen</div>
-  <div class="wbtn"><button id="zin" aria-label="Vergrößern">+</button><button id="zout" aria-label="Verkleinern">−</button></div>
+  <div class="wbtn"><button id="wbig" aria-label="Werk groß oder klein">⤢</button><button id="zin" aria-label="Vergrößern">+</button><button id="zout" aria-label="Verkleinern">−</button></div>
 </div>
 <main id="view"></main>
 <nav class="nav" id="nav">
@@ -171,6 +172,7 @@ const R=1.15,KEY='bbidle2';
 const blank=()=>({cash:25,stock:0,lv:0,total:0,life:0,l:{c1:1},v:{v1:1},t:{},f:{},g:{g1:2},rep:0,next:90,warn:0,gang:0,won:0,lost:0,log:[],ts:Date.now()});
 let S=blank(),view='werk',hall='coin',amt='1',confirmReset=false,dirty=true;
 try{const x=JSON.parse(localStorage.getItem(KEY));if(x)S=Object.assign(blank(),x)}catch(e){}
+if(!S.mig1){S.g.g1=Math.max(S.g.g1||0,2);S.mig1=1}
 const $=id=>document.getElementById(id);
 const U=['',' Tsd.',' Mio.',' Mrd.',' Bio.',' Brd.',' Trio.',' Trd.'];
 function fmt(n){if(n<1000)return n.toLocaleString('de-DE',{maximumFractionDigits:n<10?2:0})+' €';let i=0;while(n>=1000&&i<U.length-1){n/=1000;i++}return n.toLocaleString('de-DE',{maximumFractionDigits:2})+U[i]+' €'}
@@ -229,7 +231,7 @@ function render(){
   const hc=LINES.filter(l=>!l.note).reduce((a,l)=>a+cnt(S.l,l.id),0),hn=LINES.filter(l=>l.note).reduce((a,l)=>a+cnt(S.l,l.id),0);
   h=`<div class="seg" id="seg"><button data-h="coin" class="${hall==='coin'?'on':''}">Münzhalle<small>${hc} Pressen</small></button><button data-h="note" class="${hall==='note'?'on':''}">Druckhalle<small>${hn} Maschinen</small></button><button data-h="lager" class="${hall==='lager'?'on':''}">Lager<small>Stufe ${S.lv+1}</small></button></div>`;
   h+=hall==='lager'?lagerHTML():amtHTML()+LINES.filter(l=>hall==='note'?l.note:!l.note).map(lineHTML).join('');
-  if(hall!=='lager')h+=`<p class="note">Bei 10, 25, 50, 100 … Maschinen verdoppelt sich die Produktion einer Linie.</p>`}
+  if(hall!=='lager')h+=`<p class="note">Jede Linie hat 10 Maschinenplätze. Danach steigt die Linie bei 25, 50, 100 … Maschinen eine Stufe auf (Produktion ×2, Lampenfarbe wechselt).</p>`}
  else if(view==='bank'){
   const gain=Math.floor(Math.sqrt(S.total/1e9));
   h=`<h2>Bank</h2><p class="lead">Reform, Statistik und Lagebericht.</p>
@@ -261,7 +263,7 @@ function update(){
   else for(const l of LINES){const b=$('b-'+l.id);if(!b)continue;const c2=cnt(S.l,l.id),lk=l.req&&featN()<l.req,n=c2?howMany(l.b,c2):1,pr=costN(l.b,c2,n);
    b.textContent=c2?'+'+n+' · '+fmt(pr):'Bauen '+fmt(pr);b.disabled=!!lk||S.cash<pr;
    if(c2){const nm=nextMs(c2),pm=MS[msN(c2)-1]||0;$('n-'+l.id).textContent='×'+c2;$('r-'+l.id).textContent=fmt(lineRate(l))+'/s';
-    $('d-'+l.id).textContent=nm?'Bonus ×2 bei '+nm+' ('+c2+'/'+nm+')':'Alle Boni erreicht';$('p-'+l.id).style.width=nm?((c2-pm)/(nm-pm)*100)+'%':'100%'}}
+    $('d-'+l.id).textContent=c2<10?c2+' von 10 Plätzen belegt · Bonus ×2 bei 10':nm?'Linie voll · nächste Stufe (×2) bei '+nm+' Maschinen':'Höchste Stufe erreicht';$('p-'+l.id).style.width=c2<10?(c2*10)+'%':nm?((c2-pm)/(nm-pm)*100)+'%':'100%'}}
   return}
  if(view==='bank'){const g=$('gain');if(g)g.textContent='+'+Math.floor(Math.sqrt(S.total/1e9));return}
  if(view==='guard'){const df=defense(),th=threat();$('rk').textContent=Math.round(rk)+' %';$('rkB').firstElementChild.style.width=rk+'%';$('rkB').classList.toggle('hot',rk>50);
@@ -349,8 +351,7 @@ const W=(()=>{
  function build(){
   if(dyn)scene.remove(dyn);dyn=new THREE.Group();scene.add(dyn);anim={belts:[],pist:[],work:[],guards:[],cams:[],trucks:[],drones:[],train:null,plane:null,rotor:null,gate:null};
   const fz=featN();
-  const tier=c=>[1,3,8,15,25].filter(x=>c>=x).length;
-  const LAMP=['#9aa3a8','#3fb8a6','#3fb8a6','#e2b53c','#e2b53c','#c8102e','#c8102e','#8a4fd8','#8a4fd8','#8a4fd8'];
+    const LAMP=['#9aa3a8','#3fb8a6','#3fb8a6','#e2b53c','#e2b53c','#c8102e','#c8102e','#8a4fd8','#8a4fd8','#8a4fd8'];
   LINES.forEach((l,i)=>{
    const note=!!l.note,z=note?-11.2+(i-5)*3.2:-11.4+i*2.6,x0=note?2:-14,L=11,c=cnt(S.l,l.id),ms=msN(c);
    if(!c){B(L+.6,.06,1.3,l.req&&fz<l.req?'#d98c8c':'#7fcdb8',x0+L/2,.22,z,dyn,.6);return}
@@ -359,11 +360,11 @@ const W=(()=>{
    for(let k=0;k<Math.min(ms,9);k++)B(.12,.12,.12,'#e2b53c',x0-.68+(k%5)*.14,1.82+Math.floor(k/5)*.16,z+.05,dyn);
    const its=[];for(let k=0;k<Math.min(10,3+Math.floor(Math.log2(c+1)));k++){const m=note?B(.55,.06,.32,l.col,x0,.58,z,dyn):C(.22,.22,.08,l.col,x0,.6,z,dyn);its.push(m)}
    anim.belts.push({l,its,x0,L,ph:Math.random()});
-   const mc=tier(c),big=1+Math.min(ms,4)*.06,lamp=LAMP[Math.min(ms,9)];
-   for(let j=0;j<mc;j++){const mx=x0+1.4+j*2.1;
-    B((note?1.3:1)*big,(note?1.1:.9)*big,(note?1.3:1.2),note?'#5f7d8a':'#7c8d92',mx,(note?.95:.85)*big,z,dyn);
-    if(ms)B(.2,.12,.2,lamp,mx+.3,(note?1.5:1.35)*big+.05,z+.35,dyn);
-    if(!note){const p=B(.3,.45,.3,'#c9d2d5',mx,1.45*big,z,dyn);anim.pist.push({m:p,ph:j*.7,y:1.45*big})}else{const r=C(.25,.25,1.3,'#2f3739',mx,1.6*big,z,dyn);r.rotation.x=Math.PI/2;anim.pist.push({m:r,ph:j,roll:1})}}
+   const mc=Math.min(c,10),big=1+Math.min(ms,4)*.08,lamp=LAMP[Math.min(ms,9)],MC=['#7c8d92','#6f9a8f','#8f8a6a','#a08a4a','#a0605a'][Math.min(Math.floor(ms/2),4)];
+   for(let j=0;j<mc;j++){const mx=x0+.75+j*1.05;
+    B(.85,(note?1:.85)*big,note?1.3:1.15,note?'#5f7d8a':MC,mx,(note?.9:.8)*big/2+.45,z,dyn);
+    if(ms)B(.18,.12,.18,lamp,mx,(note?1:.85)*big+.55,z+.4,dyn);
+    if(!note){const y=.85*big+.7;const p=B(.26,.4,.26,'#c9d2d5',mx,y,z,dyn);anim.pist.push({m:p,ph:j*.7,y})}else{const r=C(.2,.2,1.3,'#2f3739',mx,big+.55,z,dyn);r.rotation.x=Math.PI/2;anim.pist.push({m:r,ph:j,roll:1})}}
    if(S.t.t8){B(.4,.3,.4,'#e07a2f',x0+L-.6,.65,z-.65,dyn);const arm=B(.15,.9,.15,'#e07a2f',x0+L-.6,1.2,z-.65,dyn);arm.rotation.z=.5;anim.pist.push({m:arm,ph:i,swing:1})}
    if(S.t.t11){B(.12,1.2,.12,'#3a6fd8',x0+L-1.6,.9,z-.5,dyn);B(.12,1.2,.12,'#3a6fd8',x0+L-1.6,.9,z+.5,dyn);B(.12,.12,1.12,'#7fb0ff',x0+L-1.6,1.5,z,dyn)}
    const wk=Math.min(5,1+Math.floor(Math.log2(c)/1.4));for(let j=0;j<wk;j++){const p=person(note?'#3f6fb5':'#e07a2f',dyn);p.position.set(x0+1.5+j*2.2,.2,z+.95);anim.work.push({p,x:x0+1.5+j*2.2,ph:Math.random()*6})}
@@ -407,7 +408,7 @@ const W=(()=>{
  function along(u){let d=u*tot;for(let i=0;i<segL.length;i++){if(d<=segL[i]){const a=truckPath[i],b=truckPath[i+1],f=d/segL[i];return[a[0]+(b[0]-a[0])*f,a[1]+(b[1]-a[1])*f,Math.atan2(-(b[1]-a[1]),b[0]-a[0])]}d-=segL[i]}return[42,12.8,0]}
  function perim(u){const P=[[-16.6,-14.6],[16.6,-14.6],[16.6,14.6],[-16.6,14.6]],L=[33.2,29.2,33.2,29.2],T=124.8;let d=(u%1)*T;for(let i=0;i<4;i++){if(d<=L[i]){const a=P[i],b=P[(i+1)%4],f=d/L[i];return[a[0]+(b[0]-a[0])*f,a[1]+(b[1]-a[1])*f,Math.atan2(-(b[1]-a[1]),b[0]-a[0])]}d-=L[i]}return[P[0][0],P[0][1],0]}
  /* Kamera */
- let zoom=1.2,tx=0,tz=0,speeds=0,sp=[];
+ let zoom=1.15,tx=-1,tz=-3,speeds=0,sp=[];
  function fit(){const el=$('world'),w=el.clientWidth,h=el.clientHeight;renderer.setSize(w,h,false);const a=w/h,vh=Math.max(26,48/a)/zoom,vw=vh*a;
   Object.assign(cam,{left:-vw/2,right:vw/2,top:vh/2,bottom:-vh/2});cam.position.set(tx+30,30,tz+30);cam.lookAt(tx,0,tz);cam.updateProjectionMatrix()}
  new ResizeObserver(fit).observe($('world'));
@@ -422,6 +423,7 @@ const W=(()=>{
  const up=e=>{if(ptr.size===1&&moved<8){const r=cvs.getBoundingClientRect(),ray=new THREE.Raycaster();ray.setFromCamera({x:(e.clientX-r.left)/r.width*2-1,y:-(e.clientY-r.top)/r.height*2+1},cam);const hit=ray.intersectObjects(taps)[0];if(hit)go(...hit.object.userData.go)}ptr.delete(e.pointerId);if(ptr.size<2)pinch=0};
  cvs.addEventListener('pointerup',up);cvs.addEventListener('pointercancel',e=>ptr.delete(e.pointerId));
  cvs.addEventListener('wheel',e=>{e.preventDefault();zoom=Math.min(3,Math.max(.7,zoom*(e.deltaY<0?1.1:.9)));fit()},{passive:false});
+ $('wbig').onclick=()=>{$('world').classList.toggle('big')};
  $('zin').onclick=()=>{zoom=Math.min(3,zoom*1.25);fit()};$('zout').onclick=()=>{zoom=Math.max(.7,zoom/1.25);fit()};
  /* Animation */
  function tick(t,dt){
