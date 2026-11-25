@@ -1,18 +1,25 @@
 # Bundesbank Idle
 
-Idle-Aufbauspiel rund um die Euro-Herstellung: Münzhalle, Druckhalle, Tresorlager,
-Fuhrpark, Sicherheitsmerkmale und Schutz gegen Überfälle. Fan-Spiel ohne Verbindung
-zur Deutschen Bundesbank.
+Idle-Aufbauspiel rund um die Euro-Herstellung: 3D-Werk mit Münzhalle, Druckhalle,
+Tresorlager, Fuhrpark, Sicherheitsmerkmalen und Schutz gegen Überfälle.
+Fan-Spiel ohne Verbindung zur Deutschen Bundesbank.
 
-## APK bekommen
+## Installieren
 
-1. Neues Repository auf GitHub anlegen, z. B. `bundesbank-idle`.
-2. Den kompletten Inhalt dieses Ordners hochladen (auch den Ordner `.github`).
-3. GitHub baut die APK automatisch (Reiter **Actions**, dauert ca. 3–5 Minuten).
-4. Unter **Releases** liegt danach `BundesbankIdle.apk` – auf dem Handy herunterladen
-   und installieren („Installation aus unbekannten Quellen" erlauben).
+1. Unter **Releases** die neueste `BundesbankIdle.apk` aufs Handy laden.
+2. Öffnen und installieren („Installation aus unbekannten Quellen“ einmal erlauben).
+
+## Automatische Updates
+
+Bei jedem Start fragt die App hier nach einer neuen Version. Gibt es eine,
+erscheint „Update verfügbar“ – ein Tipp auf **Installieren** lädt und installiert sie.
+Der Spielstand bleibt erhalten. Manuell: im Spiel unter **Bank → App & Updates**.
+
+Jede Änderung an `main` baut automatisch eine neue APK und veröffentlicht sie als Release.
 
 ## Spiel ändern
 
 Das komplette Spiel steckt in `app/src/main/assets/index.html`.
-Nach jeder Änderung und jedem Push baut GitHub eine neue APK.
+
+Hinweis: Die App wird mit dem Schlüssel `app/debug.keystore` signiert. Er liegt
+öffentlich im Repository, damit Updates immer zur installierten App passen.

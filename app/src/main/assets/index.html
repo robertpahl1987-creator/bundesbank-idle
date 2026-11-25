@@ -238,6 +238,11 @@ function render(){
   <div class="card"><b>Währungsreform</b><small class="sm">Setzt Werk, Fuhrpark, Technik, Merkmale und Schutz zurück. Jeder Reputationspunkt bringt dauerhaft +10 % auf Herstellung und Auslieferung. Ab 1 Mrd. € in dieser Runde.</small>
   <div class="row"><small>Reputation ${S.rep} · Reform bringt <span id="gain">+${gain}</span></small><button class="buy ${confirmReset===true?'red':''}" id="pres" ${gain<1?'disabled':''}>${confirmReset===true?'Wirklich?':'Reform'}</button></div></div>
   <div class="card"><b>Statistik</b><small class="sm">Insgesamt ausgeliefert: ${fmt(S.life)}<br>Diese Runde: ${fmt(S.total)}<br>Überfälle abgewehrt ${S.won} · verloren ${S.lost}<br>Falschgeld-Verlust ${cfPct()} %</small></div>
+  ${window.Android?`<div class="card"><div class="row" style="margin:0"><div><b>App & Updates</b><small>Installierte Version ${esc(window.Android.version())}. Neue Versionen werden beim Start automatisch gesucht.</small></div><button class="buy" id="upd">Jetzt prüfen</button></div></div>`:''}
+  <div class="card"><b>Spielstand sichern</b><small class="sm">Kopiere den Code und bewahre ihn auf, z. B. in einer Notiz. Damit kannst du deinen Spielstand auf jedem Gerät wiederherstellen.</small>
+  <div class="row"><small id="bkMsg"></small><button class="buy" id="bkOut">Code anzeigen</button></div>
+  <textarea id="bkTxt" rows="3" style="width:100%;margin-top:6px;font:13px monospace;border:1px solid var(--line);border-radius:8px;padding:6px;background:var(--bg);color:var(--ink)" placeholder="Code hier einfügen, um einen Spielstand zu laden"></textarea>
+  <div class="row"><small>Achtung: Laden ersetzt den aktuellen Spielstand.</small><button class="buy" id="bkIn">Code laden</button></div></div>
   <div class="card"><b>Lagebericht</b><div class="log" id="log"></div></div>
   <div class="card"><div class="row" style="margin:0"><div><b>Neu anfangen</b><small>Löscht den gesamten Spielstand.</small></div><button class="buy red" id="wipe">${confirmReset==='w'?'Sicher?':'Löschen'}</button></div></div>
   <p class="note">Fan-Spiel ohne Verbindung zur Deutschen Bundesbank.</p>`}
@@ -283,6 +288,7 @@ function buy(k){
  else{const src=t==='t'?TECH:FEAT,o=S[t],x=src.find(z=>z.id===id);if(o[id]||S.cash<x.c)return;S.cash-=x.c;o[id]=1;
   log((t==='t'?'Technik eingeführt: ':'Sicherheitsmerkmal eingeführt: ')+x.n,'good')}
  update()}
+const esc=t=>String(t).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
 function go(v,h){view=v;if(h)hall=h;confirmReset=false;render();$('view').scrollTop=0}
 document.addEventListener('click',e=>{
  const g=e.target.closest('[data-go]');if(g){go(g.dataset.go);return}
@@ -291,6 +297,9 @@ document.addEventListener('click',e=>{
  const am=e.target.closest('#amt button');if(am){amt=am.dataset.a;render();return}
  if(e.target.id==='pres'){if(confirmReset!==true){confirmReset=true;render();return}const gn=Math.floor(Math.sqrt(S.total/1e9));if(gn<1)return;
   const keep={rep:S.rep+gn,life:S.life,won:S.won,lost:S.lost,log:S.log};S=Object.assign(blank(),keep);confirmReset=false;dirty=true;log('Währungsreform! Reputation jetzt '+S.rep+'.','good');render();return}
+ if(e.target.id==='upd'){try{window.Android.checkUpdate()}catch(x){}return}
+ if(e.target.id==='bkOut'){const t=$('bkTxt');t.value=btoa(unescape(encodeURIComponent(JSON.stringify(S))));t.select();let ok=false;try{ok=document.execCommand('copy')}catch(x){}$('bkMsg').textContent=ok?'Code kopiert.':'Code markiert – jetzt kopieren.';return}
+ if(e.target.id==='bkIn'){try{const x=JSON.parse(decodeURIComponent(escape(atob($('bkTxt').value.trim()))));if(typeof x.cash!=='number')throw 0;S=Object.assign(blank(),x);S.ts=Date.now();dirty=true;save();log('Spielstand aus Code geladen.','good');render();$('bkMsg').textContent='Spielstand geladen.'}catch(x){$('bkMsg').textContent='Der Code ist ungültig.'}return}
  if(e.target.id==='wipe'){if(confirmReset!=='w'){confirmReset='w';render();return}S=blank();confirmReset=false;dirty=true;render();return}
  const b=e.target.closest('.buy');if(b&&b.dataset.k)buy(b.dataset.k)});
 function drawLog(){const el=$('log');if(el)el.innerHTML=S.log.length?S.log.map(l=>`<p class="${l.c||''}">${l.time} · ${l.t}</p>`).join(''):'<p>Noch keine Ereignisse.</p>'}
@@ -479,6 +488,7 @@ function loop(now){const dt=Math.min(1,(now-last)/1000);last=now;T+=dt;step(dt);
  if(W)try{W.tick(T,dt)}catch(e){console.error(e)}
  requestAnimationFrame(loop)}
 function save(){S.ts=Date.now();try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+window.bbSave=save;
 setInterval(save,5000);
 document.addEventListener('visibilitychange',()=>{if(document.hidden)save();else{const away=Math.min((Date.now()-S.ts)/1000,8*3600);if(away>10&&income()>0){const v=income()*away*0.5;earn(v);log('Während du weg warst, wurden '+fmt(v)+' ausgeliefert.','good')}S.ts=Date.now();last=performance.now()}});
 window.addEventListener('pagehide',save);
