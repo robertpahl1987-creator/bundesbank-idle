@@ -77,12 +77,12 @@ const COUNTRIES := [
 	{n="Ukraine", cur="Hrywnja", fx=45.0, flag=["#0057b7", "#0057b7", "#ffd700"]},
 	{n="Georgien", cur="Lari", fx=2.9, flag=["#ffffff", "#ff0000", "#ffffff"]},
 	{n="Marokko", cur="Dirham", fx=10.8, flag=["#c1272d", "#006233", "#c1272d"]},
-	{n="Japan", cur="Yen", fx=160.0, flag=["#ffffff", "#bc002d", "#ffffff"]},
-	{n="USA", cur="Dollar", fx=1.08, flag=["#3c3b6e", "#ffffff", "#b22234"]},
-	{n="Kanada", cur="Dollar", fx=1.5, flag=["#ff0000", "#ffffff", "#ff0000"]},
-	{n="Australien", cur="Dollar", fx=1.65, flag=["#012169", "#ffffff", "#e4002b"]},
-	{n="Mexiko", cur="Pesos", fx=21.0, flag=["#006847", "#ffffff", "#ce1126"]},
-	{n="Brasilien", cur="Real", fx=6.2, flag=["#009c3b", "#ffdf00", "#002776"]},
+	{n="Japan", far=true, cur="Yen", fx=160.0, flag=["#ffffff", "#bc002d", "#ffffff"]},
+	{n="USA", far=true, cur="Dollar", fx=1.08, flag=["#3c3b6e", "#ffffff", "#b22234"]},
+	{n="Kanada", far=true, cur="Dollar", fx=1.5, flag=["#ff0000", "#ffffff", "#ff0000"]},
+	{n="Australien", far=true, cur="Dollar", fx=1.65, flag=["#012169", "#ffffff", "#e4002b"]},
+	{n="Mexiko", far=true, cur="Pesos", fx=21.0, flag=["#006847", "#ffffff", "#ce1126"]},
+	{n="Brasilien", far=true, cur="Real", fx=6.2, flag=["#009c3b", "#ffdf00", "#002776"]},
 ]
 const ORDER_SHARE := 0.2
 const MGR := [
@@ -511,7 +511,7 @@ func active_orders() -> int:
 			n += 1
 	return n
 
-func gen_order() -> Dictionary:
+func gen_order(easy := false) -> Dictionary:
 	var c: Dictionary = COUNTRIES[randi() % COUNTRIES.size()]
 	for tries in range(10):
 		var dup := false
@@ -524,12 +524,87 @@ func gen_order() -> Dictionary:
 	var base: float = max(prod(), 0.35)
 	var dur := 90.0 + randf() * 330.0
 	var need := base * ORDER_SHARE * dur
-	return {land=c.n, cur=c.cur, fx=c.fx, flag=c.flag, need=need, done=0.0, reward=need * (2.2 + randf() * 1.3) * order_m(), active=false, wait=0.0, dur=dur}
+	var reqs := []
+	var cm := hall_machines(false)
+	var nm := hall_machines(true)
+	var kind := "coin"
+	if nm > 0 and randf() < 0.5:
+		kind = "note"
+	if kind == "coin":
+		reqs.append({t="coin", n=max(1, int(round(cm * ((0.5 + randf() * 0.4) if easy else (0.8 + randf() * 0.5)))))})
+		if randf() < 0.4:
+			var lines_built := 0
+			for l in LINES:
+				if not l.get("note", false) and cnt("l", l.id) > 0:
+					lines_built += 1
+			reqs.append({t="clines", n=min(5, lines_built + (0 if easy else (1 if randf() < 0.5 else 0)))})
+	else:
+		reqs.append({t="note", n=max(1, int(round(nm * ((0.5 + randf() * 0.4) if easy else (0.8 + randf() * 0.5)))))})
+		reqs.append({t="feat", n=min(FEAT.size(), feat_n() if easy else max(2, feat_n() + (1 if randf() < 0.4 else 0)))})
+	if c.get("far", false) and not (easy and cnt("v", "v6") == 0 and not has_d("sites", "hamburg")):
+		reqs.append({t="far"})
+	elif easy and c.get("far", false):
+		c = COUNTRIES[0]
+	if randf() < 0.5:
+		reqs.append({t="def", n=max(5, round_nice(defense() * ((0.4 + randf() * 0.4) if easy else (0.7 + randf() * 0.6))))})
+	var bonus := 1.0 + 0.25 * reqs.size()
+	return {land=c.n, cur=c.cur, fx=c.fx, flag=c.flag, need=need, done=0.0, reward=need * (2.2 + randf() * 1.3) * order_m() * bonus, active=false, wait=0.0, dur=dur, kind=kind, reqs=reqs}
+
+func any_ok_offer() -> bool:
+	for o in S["orders"]:
+		if o.get("land", "") != "" and not o.get("active", false) and o.get("wait", 0.0) <= 0.0 and order_ok(o):
+			return true
+	return false
+
+func hall_machines(note: bool) -> int:
+	var n := 0
+	for l in LINES:
+		if bool(l.get("note", false)) == note:
+			n += cnt("l", l.id)
+	return n
+
+func round_nice(v: float) -> int:
+	if v < 100.0:
+		return int(round(v / 5.0) * 5.0)
+	var p := pow(10.0, floor(log(v) / log(10.0)) - 1.0)
+	return int(round(v / p) * p)
+
+## Liefert für jede Voraussetzung [Text, erfüllt]
+func req_status(o: Dictionary) -> Array:
+	var out := []
+	for r in o.get("reqs", []):
+		match r.t:
+			"coin":
+				out.append(["%d Pressen in der Münzhalle (du hast %d)" % [r.n, hall_machines(false)], hall_machines(false) >= r.n])
+			"note":
+				out.append(["%d Druckmaschinen in der Druckhalle (du hast %d)" % [r.n, hall_machines(true)], hall_machines(true) >= r.n])
+			"clines":
+				var b := 0
+				for l in LINES:
+					if not l.get("note", false) and cnt("l", l.id) > 0:
+						b += 1
+				out.append(["%d verschiedene Münzlinien (du hast %d)" % [r.n, b], b >= r.n])
+			"feat":
+				out.append(["%d Sicherheitsmerkmale (du hast %d)" % [r.n, feat_n()], feat_n() >= r.n])
+			"far":
+				var ok := cnt("v", "v6") > 0 or has_d("sites", "hamburg")
+				out.append(["Übersee: Frachtflugzeug oder Hafen Hamburg", ok])
+			"def":
+				out.append(["Schutz mindestens %s (du hast %s)" % [num(r.n), num(defense())], defense() >= r.n])
+			"e2":
+				out.append(["2-Euro-Linie gebaut", cnt("l", "e2") > 0])
+	return out
+
+func order_ok(o: Dictionary) -> bool:
+	for st in req_status(o):
+		if not st[1]:
+			return false
+	return true
 
 func orders_tick(dt: float) -> void:
 	var o_arr: Array = S["orders"]
 	while o_arr.size() < 3:
-		o_arr.append(gen_order())
+		o_arr.append(gen_order(not any_ok_offer()))
 	var p := prod()
 	for i in range(o_arr.size()):
 		var o: Dictionary = o_arr[i]
@@ -539,7 +614,7 @@ func orders_tick(dt: float) -> void:
 		if o.get("wait", 0.0) > 0.0:
 			o["wait"] -= dt
 			if o["wait"] <= 0.0:
-				o_arr[i] = gen_order()
+				o_arr[i] = gen_order(not any_ok_offer())
 				if view == "orders":
 					render()
 			continue
@@ -567,7 +642,7 @@ func num_cur(v: float) -> String:
 
 func accept_order(i: int) -> void:
 	var o: Dictionary = S["orders"][i]
-	if o.get("wait", 0.0) > 0.0 or o.get("active", false):
+	if o.get("wait", 0.0) > 0.0 or o.get("active", false) or not order_ok(o):
 		return
 	o["active"] = true
 	add_log("Auftrag aus %s angenommen." % o.land, "good")
@@ -592,7 +667,8 @@ func gen_commem() -> Dictionary:
 	var nm: String = left[randi() % left.size()]
 	var base: float = max(prod(), 0.35)
 	var need := base * ORDER_SHARE * (120.0 + randf() * 120.0)
-	return {land="Sonderprägung", name=nm, cur="Stück", fx=0.5, flag=["#ffc23d", "#c9cfd2", "#ffc23d"], need=need, done=0.0, reward=need * 4.0 * order_m(), active=false, wait=0.0, special=true, deadline=S["gt"] + 600.0}
+	var creqs := [{t="e2"}, {t="coin", n=max(10, int(hall_machines(false) * 0.8))}]
+	return {reqs=creqs, kind="coin", land="Sonderprägung", name=nm, cur="Stück", fx=0.5, flag=["#ffc23d", "#c9cfd2", "#ffc23d"], need=need, done=0.0, reward=need * 4.0 * order_m(), active=false, wait=0.0, special=true, deadline=S["gt"] + 600.0}
 
 func step(dt: float) -> void:
 	orders_tick(dt)
@@ -1346,7 +1422,7 @@ func render_list() -> void:
 		refs[key] = {btn=b, desc=desc, title=t, panel=p}
 
 func render_orders() -> void:
-	head_title("Aufträge", "Länder außerhalb der EU bestellen Münzen und Scheine. Jeder laufende Auftrag nutzt 20 % deiner Herstellung und zahlt am Ende einen hohen Lohn.")
+	head_title("Aufträge", "Länder außerhalb der EU bestellen Münzen und Scheine. Annehmen kannst du nur, wenn dein Werk die Voraussetzungen erfüllt. Jeder laufende Auftrag nutzt 20 % deiner Herstellung; je mehr Voraussetzungen, desto höher der Lohn.")
 	var hp := card()
 	var hr := hb(14)
 	hp.add_child(hr)
@@ -1361,7 +1437,7 @@ func render_orders() -> void:
 	hr.add_child(hb2)
 	refs["hunt"] = {btn=hb2, desc=hd}
 	while S["orders"].size() < 3:
-		S["orders"].append(gen_order())
+		S["orders"].append(gen_order(not any_ok_offer()))
 	for i in range(S["orders"].size()):
 		var o: Dictionary = S["orders"][i]
 		var idx := i
@@ -1391,19 +1467,28 @@ func render_orders() -> void:
 		if o.get("special", false):
 			v.add_child(lbl("Sonderprägung für die Sammelvitrine · Lohn ×4 · begrenzte Zeit", 25, C_INK, false, true))
 		else:
-			v.add_child(lbl("%s %s herstellen" % [num_cur(o.need * o.fx), o.cur], 25, C_INK, false, true))
+			v.add_child(lbl("%s %s in %s herstellen" % [num_cur(o.need * o.fx), o.cur, "Banknoten" if o.get("kind", "coin") == "note" else "Münzen"], 25, C_INK, false, true))
+		var req_lbls := []
+		if not o.get("active", false) and o.get("reqs", []).size() > 0:
+			v.add_child(lbl("Voraussetzungen:", 23, C_MUT, true))
+			for st in req_status(o):
+				var rl := lbl("", 23, C_GREEN, false, true)
+				v.add_child(rl)
+				req_lbls.append(rl)
 		var bar := pbar(12)
 		v.add_child(bar)
 		var row := hb(12)
 		v.add_child(row)
 		var info := lbl("", 23, C_MUT, false, true)
 		row.add_child(info)
+		var acc: Button = null
 		if o.get("active", false):
 			row.add_child(lbl("läuft", 26, C_GREEN, true))
 		else:
 			row.add_child(btn("Ablehnen", func(): decline_order(idx), "light", 170))
-			row.add_child(btn("Annehmen", func(): accept_order(idx), "main", 190))
-		refs["o%d" % i] = {bar=bar, info=info}
+			acc = btn("Annehmen", func(): accept_order(idx), "main", 190)
+			row.add_child(acc)
+		refs["o%d" % i] = {bar=bar, info=info, acc=acc, reqs=req_lbls}
 	content.add_child(lbl("Bis zu 3 Aufträge werden angeboten. Ist einer erledigt, kommt nach kurzer Zeit ein neuer. Erledigt bisher: %d" % int(S.get("odone", 0)), 22, C_MUT, false, true))
 
 func render_bank() -> void:
@@ -1719,6 +1804,12 @@ func update_ui() -> void:
 				r.wait.text = "Neuer Auftrag kommt in %d s …" % int(ceil(max(0.0, o.get("wait", 0.0))))
 				continue
 			r.bar.value = o.done / o.need * 100.0
+			if r.acc != null:
+				var st_list := req_status(o)
+				for q in range(min(st_list.size(), r.reqs.size())):
+					r.reqs[q].text = ("✓ " if st_list[q][1] else "✗ ") + st_list[q][0]
+					r.reqs[q].add_theme_color_override("font_color", C_GREEN if st_list[q][1] else C_RED)
+				r.acc.disabled = not order_ok(o)
 			var rest: float = (o.need - o.done) / max(0.001, p2 * ORDER_SHARE)
 			var frist := ""
 			if o.get("special", false):
