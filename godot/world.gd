@@ -23,6 +23,11 @@ var touches := {}
 var moved := 0.0
 var pinch := 0.0
 var dragging := false
+var env: Environment
+var sun: DirectionalLight3D
+var lamps := []
+var lamp_mat: StandardMaterial3D
+var win_mat: StandardMaterial3D
 
 const LAMP := ["#9aa3a8", "#3fd68a", "#3fd68a", "#ffc23d", "#ffc23d", "#ff4d5e", "#ff4d5e", "#a46bff", "#a46bff", "#a46bff"]
 const ZONES := [
@@ -127,7 +132,7 @@ func label3d(txt: String, x: float, y: float, z: float) -> void:
 
 # ---------------------------------------------------------------- Start
 func _ready() -> void:
-	var env := Environment.new()
+	env = Environment.new()
 	env.background_mode = Environment.BG_COLOR
 	env.background_color = Color("#7ec8e3")
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
@@ -138,7 +143,7 @@ func _ready() -> void:
 	var we := WorldEnvironment.new()
 	we.environment = env
 	add_child(we)
-	var sun := DirectionalLight3D.new()
+	sun = DirectionalLight3D.new()
 	add_child(sun)
 	sun.look_at_from_position(Vector3(18, 32, 12), Vector3.ZERO, Vector3.UP)
 	sun.light_energy = 0.95
@@ -153,6 +158,7 @@ func _ready() -> void:
 	add_child(cam)
 	cam.current = true
 	build_static()
+	apply_quality()
 	fit()
 
 func build_static() -> void:
@@ -190,6 +196,32 @@ func build_static() -> void:
 		var z: float = trees[i][1]
 		C(0.15, 0.2, 0.8, "#7a5532", x, 0.4, z, null, 6)
 		C(0.0, 1.1 + (i % 3) * 0.2, 2.4, "#2e7d32" if i % 2 else "#3b8f3a", x, 1.9, z, null, 7)
+	lamp_mat = StandardMaterial3D.new()
+	lamp_mat.albedo_color = Color("#fff2c0")
+	lamp_mat.emission_enabled = true
+	lamp_mat.emission = Color("#ffd27a")
+	win_mat = StandardMaterial3D.new()
+	win_mat.albedo_color = Color("#2a3a40")
+	win_mat.emission_enabled = true
+	win_mat.emission = Color("#ffc86a")
+	for lp in [[-2, 11.2], [6, 11.2], [14, 11.2], [22, 11.2], [30, 11.2], [-16.2, -5], [-16.2, 5], [0, -14.2], [16.2, -6]]:
+		C(0.07, 0.09, 3.2, "#3a4448", lp[0], 1.6, lp[1], null, 6)
+		var hd := B(0.5, 0.18, 0.5, "#3a4448", lp[0], 3.25, lp[1])
+		var bulb := B(0.36, 0.12, 0.36, "#fff2c0", lp[0], 3.12, lp[1])
+		bulb.material_override = lamp_mat
+		var ol := OmniLight3D.new()
+		ol.position = Vector3(lp[0], 2.9, lp[1])
+		ol.light_color = Color("#ffd27a")
+		ol.omni_range = 7.0
+		ol.light_energy = 0.0
+		add_child(ol)
+		lamps.append(ol)
+	for wx in [-12.0, -8.0, -4.0]:
+		var w1 := B(1.6, 0.5, 0.05, "#2a3a40", wx, 1.0, -12.82)
+		w1.material_override = win_mat
+	for wx in [4.0, 8.0, 12.0]:
+		var w2 := B(1.6, 0.5, 0.05, "#2a3a40", wx, 1.0, -12.82)
+		w2.material_override = win_mat
 	label3d("Münzhalle", -8, 3.4, -14)
 	label3d("Druckhalle", 8, 3.4, -14)
 	label3d("Tresor", -10, 3.6, 7)
@@ -349,9 +381,92 @@ func build() -> void:
 			for k in range(3):
 				B(1.1, 0.7, 1.1, fl[k % fl.size()], 9.0 + oi * 2.0, 0.5 + k * 0.72, 9.6, dyn)
 			oi += 1
+	build_extras()
 	build_security()
 	build_fleet()
 	last_pile = -1
+
+func build_extras() -> void:
+	var S: Dictionary = main.S
+	# Goldreserve neben dem Tresor
+	var gold: int = int(S["gold"])
+	if gold > 0:
+		B(5, 0.12, 3, "#3a4448", -13.5, 0.15, 13.6, dyn)
+		B(5, 0.9, 0.2, "#55626a", -13.5, 0.55, 12.2, dyn)
+		B(5, 0.9, 0.2, "#55626a", -13.5, 0.55, 15.0, dyn)
+		B(0.2, 0.9, 3, "#55626a", -16.0, 0.55, 13.6, dyn)
+		for i in range(min(gold, 60)):
+			var gx := -15.4 + (i % 8) * 0.52
+			var gz := 12.8 + int(i / 8) % 4 * 0.6
+			var gy := 0.33 + int(i / 32) * 0.2
+			var bar := B(0.46, 0.18, 0.26, "#ffcf33", gx, gy, gz, dyn)
+			bar.material_override = mat("#ffcf33", 1.0, true)
+	# Schredder-Halle
+	var sl: int = int(S["shred"])
+	if sl > 0:
+		B(3.4, 1.4 + sl * 0.08, 2.2, "#8a5a9e", 3.2, 0.85, 3.9, dyn)
+		B(3.6, 0.2, 2.4, "#5e3a70", 3.2, 1.6 + sl * 0.08, 3.9, dyn)
+		B(1.0, 0.8, 0.6, "#2b3436", 3.2, 0.6, 5.2, dyn)
+		var sp_l := Label3D.new()
+		sp_l.text = "Schredder %d" % sl
+		sp_l.font_size = 64
+		sp_l.pixel_size = 0.011
+		sp_l.outline_size = 18
+		sp_l.outline_modulate = Color("#3a1f48")
+		sp_l.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		sp_l.no_depth_test = true
+		sp_l.position = Vector3(3.2, 2.6 + sl * 0.08, 3.9)
+		dyn.add_child(sp_l)
+		for k in range(min(sl, 6)):
+			var sch := sphere(0.18, "#c9e0c0", 2.2 + k * 0.35, 0.3, 5.4, dyn)
+			sch.scale = Vector3(1, 0.6, 1)
+	# Museum (außerhalb des Zauns, links)
+	if int(S["museum"]) > 0:
+		B(6, 0.4, 4, "#e9e2d0", -24, 0.2, -6, dyn)
+		for k in range(5):
+			C(0.25, 0.25, 2.2, "#f4efe2", -26.4 + k * 1.2, 1.5, -4.3, dyn, 10)
+		B(6.2, 0.5, 4.2, "#e9e2d0", -24, 2.85, -6, dyn)
+		var roof := C(0.0, 3.3, 1.2, "#c9b27a", -24, 3.7, -6, dyn, 4)
+		roof.rotation.y = PI / 4
+		var ml := Label3D.new()
+		ml.text = "Museum · %d" % (int(S["rep"]) + S["coins"].size())
+		ml.font_size = 80
+		ml.pixel_size = 0.011
+		ml.outline_size = 20
+		ml.outline_modulate = Color("#0a4f4a")
+		ml.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		ml.no_depth_test = true
+		ml.position = Vector3(-24, 5.2, -6)
+		dyn.add_child(ml)
+	# Zweigwerke (in der Ferne)
+	var spots := {"mainz": [34, -22, "#c8553a"], "leipzig": [40, -6, "#0e8a7c"], "muenchen": [36, 10, "#3d6fb0"], "hamburg": [44, 24, "#8a5a9e"]}
+	var names := {"mainz": "Mainz", "leipzig": "Leipzig", "muenchen": "München", "hamburg": "Hamburg"}
+	for id in spots.keys():
+		if S["sites"].get(id, false):
+			var sp2: Array = spots[id]
+			B(6, 0.12, 5, "#8e9a9e", sp2[0], 0.08, sp2[1], dyn)
+			B(4.5, 2.0, 3.2, sp2[2], sp2[0], 1.1, sp2[1], dyn)
+			B(4.7, 0.25, 3.4, "#2b3436", sp2[0], 2.2, sp2[1], dyn)
+			C(0.3, 0.4, 3.0, "#9aa3a8", sp2[0] + 1.6, 2.8, sp2[1] - 0.8, dyn, 8)
+			var sl3 := Label3D.new()
+			sl3.text = names[id]
+			sl3.font_size = 96
+			sl3.pixel_size = 0.011
+			sl3.outline_size = 24
+			sl3.outline_modulate = Color("#0a4f4a")
+			sl3.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+			sl3.no_depth_test = true
+			sl3.position = Vector3(sp2[0], 4.6, sp2[1])
+			dyn.add_child(sl3)
+	# Werksleiter mit Krawatte
+	var mpos := {"coin": [-8.0, 1.8], "note": [8.0, 1.8], "fleet": [4.0, 10.6], "sec": [13.5, 14.8]}
+	for id in mpos.keys():
+		if S["mgr"].get(id, false):
+			var mp: Array = mpos[id]
+			var pm := person("#f4f5f2", dyn)
+			B(0.08, 0.32, 0.02, "#c8102e", 0, 0.6, 0.15, pm)
+			B(0.42, 0.2, 0.3, "#2b3436", 0, 0.22, 0, pm)
+			pm.position = Vector3(mp[0], 0.15, mp[1])
 
 func build_security() -> void:
 	var g3 := cnt("g", "g3")
@@ -446,6 +561,9 @@ func build_fleet() -> void:
 		for w in wheels:
 			var wm := C(0.22, 0.22, 0.15, "#1b2224", w[0], 0.22, w[1], tr, 8)
 			wm.rotation.x = PI / 2
+		if int(main.S["escort"]) > 0 and j % max(1, 4 - int(main.S["escort"]) / 2) == 0:
+			var esc := B(0.3, 0.14, 0.3, "#3a6fd8", 0.2, 1.42, 0, tr)
+			esc.material_override = mat("#3a6fd8", 1.0, true)
 		dyn.add_child(tr)
 		anim.trucks.append({t = tr, u = float(j) / fleet.size()})
 	if cnt("v", "v5") > 0:
@@ -521,6 +639,15 @@ func perim(u: float) -> Array:
 		d -= L[i]
 	return [P[0][0], P[0][1], 0.0]
 
+func apply_quality() -> void:
+	var high: bool = int(main.S.get("gfx", 1)) == 1
+	sun.shadow_enabled = high
+	var vp := get_viewport()
+	if vp is SubViewport:
+		vp.msaa_3d = Viewport.MSAA_2X if high else Viewport.MSAA_DISABLED
+	for l in lamps:
+		l.visible = high
+
 # ---------------------------------------------------------------- Kamera & Eingabe
 func fit() -> void:
 	if cam == null:
@@ -559,31 +686,27 @@ func tap(pos: Vector2) -> void:
 			return
 
 func handle_input(ev: InputEvent) -> void:
+	# Ein Finger kommt als (emulierte) Maus an: Verschieben und Antippen.
+	# Zwei Finger werden über die Touch-Ereignisse zum Zoomen ausgewertet.
 	if ev is InputEventScreenTouch:
 		if ev.pressed:
 			touches[ev.index] = ev.position
-			moved = 0.0
-			if touches.size() == 2:
-				var ps := touches.values()
-				pinch = ps[0].distance_to(ps[1])
 		else:
-			if touches.size() == 1 and moved < 12.0:
-				tap(ev.position)
 			touches.erase(ev.index)
+		if touches.size() == 2:
+			var ps := touches.values()
+			pinch = ps[0].distance_to(ps[1])
+		elif touches.size() < 2:
 			pinch = 0.0
 	elif ev is InputEventScreenDrag:
+		touches[ev.index] = ev.position
 		if touches.size() >= 2:
-			touches[ev.index] = ev.position
-			var ps := touches.values()
-			var d: float = ps[0].distance_to(ps[1])
+			var ps2 := touches.values()
+			var d: float = ps2[0].distance_to(ps2[1])
 			if pinch > 0.0:
 				zoom_by(d / pinch)
 			pinch = d
 			moved = 99.0
-		else:
-			touches[ev.index] = ev.position
-			moved += ev.relative.length()
-			pan(ev.relative)
 	elif ev is InputEventMouseButton:
 		if ev.button_index == MOUSE_BUTTON_LEFT:
 			if ev.pressed:
@@ -591,7 +714,7 @@ func handle_input(ev: InputEvent) -> void:
 				moved = 0.0
 			else:
 				dragging = false
-				if moved < 8.0:
+				if moved < 12.0 and touches.size() <= 1:
 					tap(ev.position)
 		elif ev.button_index == MOUSE_BUTTON_WHEEL_UP and ev.pressed:
 			zoom_by(1.1)
@@ -599,7 +722,8 @@ func handle_input(ev: InputEvent) -> void:
 			zoom_by(0.9)
 	elif ev is InputEventMouseMotion and dragging:
 		moved += ev.relative.length()
-		pan(ev.relative)
+		if touches.size() < 2:
+			pan(ev.relative)
 
 # ---------------------------------------------------------------- Animation
 func _process(dt: float) -> void:
@@ -653,6 +777,19 @@ func _process(dt: float) -> void:
 		anim.plane.rotation.y = -atan2(50, 90)
 	if anim.rotor:
 		anim.rotor.rotation.y = t * 14.0
+	var ph: float = main.day_phase()
+	var night := 0.0
+	if ph > 0.55:
+		night = clamp((ph - 0.55) / 0.08, 0.0, 1.0) * clamp((1.0 - ph) / 0.05, 0.0, 1.0)
+	sun.light_energy = lerp(0.95, 0.12, night)
+	sun.light_color = Color("#fff4df").lerp(Color("#8fa8ff"), night)
+	env.background_color = Color("#7ec8e3").lerp(Color("#0b1530"), night)
+	env.ambient_light_color = Color("#d8ecff").lerp(Color("#4a5ea8"), night)
+	env.ambient_light_energy = lerp(0.32, 0.22, night)
+	lamp_mat.emission_energy_multiplier = night * 3.0
+	win_mat.emission_energy_multiplier = night * 2.5
+	for l in lamps:
+		l.light_energy = night * 1.6
 	var al: bool = main.S["warn"] > 0.0
 	if anim.gate:
 		anim.gate.position.z = 12.8 if al else 15.4

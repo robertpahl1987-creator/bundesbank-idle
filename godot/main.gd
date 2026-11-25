@@ -85,6 +85,50 @@ const COUNTRIES := [
 	{n="Brasilien", cur="Real", fx=6.2, flag=["#009c3b", "#ffdf00", "#002776"]},
 ]
 const ORDER_SHARE := 0.2
+const MGR := [
+	{id="coin", n="Leiterin Münzhalle", d="Münzhalle ×1,5 · kauft Pressen nach", c=5000.0},
+	{id="fleet", n="Fuhrparkchef", d="Auslieferung ×1,5 · kauft Fahrzeuge nach", c=20000.0},
+	{id="sec", n="Sicherheitschefin", d="Schutz ×1,25 · kauft Schutz nach, wenn das Risiko über 40 % steigt", c=50000.0},
+	{id="note", n="Leiter Druckhalle", d="Druckhalle ×1,5 · kauft Druckwerke nach", c=5e6},
+]
+const SITES := [
+	{id="mainz", n="Zweigwerk Mainz", d="Münzprägung: Münzhalle ×2", c=5e6},
+	{id="leipzig", n="Logistik Leipzig", d="Verteilzentrum: Auslieferung ×2", c=5e7},
+	{id="muenchen", n="Druckerei München", d="Banknotendruck: Druckhalle ×2", c=5e8},
+	{id="hamburg", n="Hafen Hamburg", d="Export: Auftragslohn ×1,5", c=2e9},
+]
+const EVENTS := [
+	{id="strike", t="Streik in der Münzhalle", d="Die Belegschaft legt die Arbeit nieder und fordert mehr Lohn.", a="Lohnerhöhung zahlen", mins=5.0, b="Abwarten (Münzhalle 2 Min. halbiert)", fx={k="coin", m=0.5, dur=120.0}},
+	{id="power", t="Stromausfall", d="Ein Umspannwerk in der Nähe ist ausgefallen.", a="Notstrom mieten", mins=4.0, b="Abwarten (Werk 60 s still)", fx={k="prod", m=0.0, dur=60.0}},
+	{id="break", t="Maschinenschaden", d="An einer Linie ist ein Hydraulikschlauch geplatzt.", a="Techniker rufen", mins=3.0, b="Selbst reparieren (Linie 3 Min. aus)", fx={k="line", m=0.0, dur=180.0}},
+	{id="paper", t="Papierknappheit", d="Der Lieferant für Banknotenpapier ist im Verzug.", a="Express-Lieferung", mins=5.0, b="Abwarten (Druckhalle 3 Min. halbiert)", fx={k="note", m=0.5, dur=180.0}},
+	{id="xmas", t="Großbestellung zu Weihnachten", d="Die Geschäftsbanken brauchen dringend Bargeld für die Feiertage.", a="Sonderschicht (Auslieferung ×2 für 3 Min.)", good=true, fxa={k="del", m=2.0, dur=180.0}, b="Ablehnen"},
+	{id="audit", t="Besuch vom Rechnungshof", d="Die Prüfer wollen die Bücher sehen.", a="Alles offenlegen (Bonus)", bonus=3.0, b="Vertrösten (Werk 2 Min. ×0,8)", fx={k="prod", m=0.8, dur=120.0}},
+	{id="heat", t="Hitzewelle", d="In den Hallen wird es über 35 Grad heiß.", a="Klimageräte mieten", mins=3.0, b="Durchhalten (Werk 2 Min. ×0,7)", fx={k="prod", m=0.7, dur=120.0}},
+]
+const COMMEMS := ["2 € Kölner Dom", "2 € Brandenburger Tor", "2 € Elbphilharmonie", "2 € Schloss Sanssouci", "2 € Wartburg", "2 € Fußball-EM", "2 € Mauerfall-Jubiläum", "2 € Holstentor", "2 € Zugspitze", "2 € Bremer Stadtmusikanten", "2 € Semperoper", "2 € Rügen-Kreidefelsen"]
+const FEATNAMES := [["Wasserzeichen", "Wasserzeichn"], ["Sicherheitsfaden", "Sicherheitsfadn"], ["Hologramm", "Hologram"], ["Smaragd-Zahl", "Smaragt-Zahl"], ["Mikroschrift", "Mikroschift"], ["Relief", "Releif"]]
+const ACH := [
+	{id="a1", n="Erste Million", d="1 Mio. € ausgeliefert"},
+	{id="a2", n="Erste Milliarde", d="1 Mrd. € ausgeliefert"},
+	{id="a3", n="Billionär", d="1 Bio. € ausgeliefert"},
+	{id="a4", n="Wachsam", d="10 Überfälle abgewehrt"},
+	{id="a5", n="Festung", d="50 Überfälle abgewehrt"},
+	{id="a6", n="Druckerpresse", d="Erste Druckhalle-Linie gebaut"},
+	{id="a7", n="Volles Werk", d="Alle 9 Linien gebaut"},
+	{id="a8", n="Linie voll", d="Eine Linie mit 10 Maschinen"},
+	{id="a9", n="Großserie", d="100 Maschinen in einer Linie"},
+	{id="a10", n="Exporteur", d="5 Aufträge erledigt"},
+	{id="a11", n="Welthandel", d="25 Aufträge erledigt"},
+	{id="a12", n="Sammler", d="Erste Gedenkmünze geprägt"},
+	{id="a13", n="Fälschungssicher", d="Alle Sicherheitsmerkmale"},
+	{id="a14", n="Falschgeld-Jäger", d="10 Fälschungen erkannt"},
+	{id="a15", n="Reformer", d="Erste Währungsreform"},
+	{id="a16", n="Goldschatz", d="10 Goldbarren"},
+	{id="a17", n="Bundesweit", d="Alle Standorte eröffnet"},
+	{id="a18", n="Treue", d="7 Tage in Folge gespielt"},
+]
+const DAY_LEN := 480.0
 
 const C_PETROL := Color("#0e8a7c")
 const C_HEAD := Color("#0a4f4a")
@@ -140,7 +184,9 @@ func now() -> float:
 
 func blank() -> Dictionary:
 	return {cash=25.0, stock=0.0, lv=0, total=0.0, life=0.0, l={"c1": 1}, v={"v1": 1}, t={}, f={}, g={"g1": 2},
-		rep=0, next=90.0, warn=0.0, gang=0, won=0, lost=0, log=[], ts=now(), mig1=1, orders=[], odone=0}
+		rep=0, next=90.0, warn=0.0, gang=0, won=0, lost=0, log=[], ts=now(), mig1=1, orders=[], odone=0,
+		mgr={}, auto={}, sites={}, shred=0, gold=0, zins=2, fx=[], gt=0.0, ev_next=240.0, ev_cur="", daily_day=0, streak=0,
+		box_ts=0.0, ach={}, coins=[], fakes=0, gfx=1, hunt_next=60.0, escort=0, museum=0, amb_next=300.0, comm_next=300.0}
 
 func load_game() -> void:
 	S = blank()
@@ -149,18 +195,122 @@ func load_game() -> void:
 		var x = JSON.parse_string(f.get_as_text())
 		if typeof(x) == TYPE_DICTIONARY:
 			apply_state(x)
+			# Falls die Datei nur ein frischer Start nach dem Update ist, alten Stand trotzdem holen
+			if S.get("migrated", false):
+				return
+	var old := migrate_webview()
+	if not old.is_empty():
+		var life_new := float(S.get("life", 0.0))
+		if float(old.get("life", 0.0)) > life_new:
+			apply_state(old)
+			S["ts"] = now()
+			S["warn"] = 0.0
+			S["migrated"] = true
+			S["log"].push_front({t="Spielstand aus der alten App-Version übernommen.", c="good", time=Time.get_time_string_from_system().substr(0, 5)})
+			save_game()
+	S["migrated"] = true
+
+## Liest den Spielstand der früheren HTML-App (WebView-Speicher im selben App-Ordner)
+func migrate_webview() -> Dictionary:
+	var base := OS.get_user_data_dir().get_base_dir()
+	var files := []
+	for root in [base + "/app_webview", base.get_base_dir() + "/app_webview", OS.get_user_data_dir() + "/../app_webview"]:
+		collect_files(root, files, 0)
+	var best := {}
+	var best_life := -1.0
+	for path in files:
+		var fa := FileAccess.open(path, FileAccess.READ)
+		if fa == null:
+			continue
+		var data := fa.get_buffer(fa.get_length())
+		for cand in [data.get_string_from_ascii(), utf16_text(data)]:
+			for js in extract_states(cand):
+				var x = JSON.parse_string(js)
+				if typeof(x) == TYPE_DICTIONARY and x.has("cash") and x.has("l"):
+					var lf := float(x.get("life", 0.0))
+					if lf >= best_life:
+						best_life = lf
+						best = x
+	return best
+
+func collect_files(dir: String, out: Array, depth: int) -> void:
+	if depth > 6:
+		return
+	var d := DirAccess.open(dir)
+	if d == null:
+		return
+	d.list_dir_begin()
+	var n := d.get_next()
+	while n != "":
+		if n != "." and n != "..":
+			var full := dir + "/" + n
+			if d.current_is_dir():
+				collect_files(full, out, depth + 1)
+			elif n.ends_with(".log") or n.ends_with(".ldb") or n.find("localstorage") >= 0:
+				out.append(full)
+		n = d.get_next()
+	d.list_dir_end()
+
+func utf16_text(data: PackedByteArray) -> String:
+	# Chromium legt Texte mit Sonderzeichen als UTF-16 ab: jedes zweite Byte ist dann 0
+	var out := PackedByteArray()
+	var i := 0
+	while i + 1 < data.size():
+		if data[i + 1] == 0 and data[i] >= 32 and data[i] < 127:
+			out.append(data[i])
+			i += 2
+		elif data[i + 1] == 0 and data[i] >= 128:
+			out.append(63)
+			i += 2
+		else:
+			out.append(10)
+			i += 1
+	return out.get_string_from_ascii()
+
+func extract_states(txt: String) -> Array:
+	var res := []
+	var pos := txt.find("{\"cash\":")
+	while pos >= 0:
+		var depth := 0
+		var in_str := false
+		var esc := false
+		var end := -1
+		for i in range(pos, min(txt.length(), pos + 200000)):
+			var ch := txt[i]
+			if in_str:
+				if esc:
+					esc = false
+				elif ch == "\\":
+					esc = true
+				elif ch == "\"":
+					in_str = false
+			else:
+				if ch == "\"":
+					in_str = true
+				elif ch == "{":
+					depth += 1
+				elif ch == "}":
+					depth -= 1
+					if depth == 0:
+						end = i
+						break
+		if end > pos:
+			res.append(txt.substr(pos, end - pos + 1))
+		pos = txt.find("{\"cash\":", pos + 8)
+	return res
 
 func apply_state(x: Dictionary) -> void:
 	var b := blank()
 	for k in x.keys():
 		b[k] = x[k]
-	for k in ["l", "v", "t", "f", "g"]:
+	for k in ["l", "v", "t", "f", "g", "mgr", "auto", "sites", "ach"]:
 		if typeof(b[k]) != TYPE_DICTIONARY:
 			b[k] = {}
 	if typeof(b["log"]) != TYPE_ARRAY:
 		b["log"] = []
-	if typeof(b["orders"]) != TYPE_ARRAY:
-		b["orders"] = []
+	for k in ["orders", "fx", "coins"]:
+		if typeof(b[k]) != TYPE_ARRAY:
+			b[k] = []
 	S = b
 
 func save_game() -> void:
@@ -213,12 +363,63 @@ func next_ms(c: int) -> int:
 			return m
 	return 0
 
+func has_d(o: String, id: String) -> bool:
+	return bool(S[o].get(id, false))
+
+func fx_m(k: String) -> float:
+	var m := 1.0
+	for f in S["fx"]:
+		if f.k == k and f.until > S["gt"]:
+			m *= f.m
+	return m
+
+func line_off(id: String) -> bool:
+	for f in S["fx"]:
+		if f.k == "line" and f.get("id", "") == id and f.until > S["gt"]:
+			return true
+	return false
+
+func ach_n() -> int:
+	return S["ach"].size()
+
+func museum_m() -> float:
+	return 1.0 + 0.05 * float(S["rep"]) if int(S["museum"]) > 0 else 1.0
+
+func glob_m() -> float:
+	return (1.0 + 0.03 * int(S["gold"])) * (1.0 + 0.02 * ach_n()) * museum_m() * fx_m("prod")
+
+func hall_m(note: bool) -> float:
+	var m := 1.0
+	if note:
+		m *= (1.5 if has_d("mgr", "note") else 1.0) * (2.0 if has_d("sites", "muenchen") else 1.0) * fx_m("note")
+	else:
+		m *= (1.5 if has_d("mgr", "coin") else 1.0) * (2.0 if has_d("sites", "mainz") else 1.0) * fx_m("coin")
+	return m
+
 func base_mul(l: Dictionary) -> float:
-	return tm("note" if l.get("note", false) else "coin") * tm("all") * rep_m() * (1.0 - cf_pct() / 100.0)
+	var note: bool = l.get("note", false)
+	return tm("note" if note else "coin") * tm("all") * rep_m() * (1.0 - cf_pct() / 100.0) * glob_m() * hall_m(note)
 
 func line_rate(l: Dictionary) -> float:
 	var c := cnt("l", l.id)
+	if line_off(l.id):
+		return 0.0
 	return l.r * c * pow(2.0, ms_n(c)) * base_mul(l)
+
+func zins() -> int:
+	return int(S["zins"])
+
+func pay_m() -> float:
+	return (1.1 - 0.04 * zins()) * (1.0 + 0.05 * int(S["shred"]))
+
+func order_m() -> float:
+	return (1.4 - 0.1 * zins()) * (1.5 if has_d("sites", "hamburg") else 1.0)
+
+func day_phase() -> float:
+	return fposmod(float(S["gt"]) / DAY_LEN, 1.0)
+
+func is_night() -> bool:
+	return day_phase() > 0.62
 
 func prod() -> float:
 	var s := 0.0
@@ -227,7 +428,7 @@ func prod() -> float:
 	return s
 
 func del_m() -> float:
-	return tm("del") * rep_m()
+	return tm("del") * rep_m() * (2.0 if has_d("sites", "leipzig") else 1.0) * (1.5 if has_d("mgr", "fleet") else 1.0) * fx_m("del")
 
 func deliv() -> float:
 	var s := 0.0
@@ -242,16 +443,16 @@ func cap_cost() -> float:
 	return 150.0 * pow(4.0, int(S["lv"]))
 
 func income() -> float:
-	return min(prod(), deliv())
+	return min(prod(), deliv()) * pay_m()
 
 func defense() -> float:
 	var s := 0.0
 	for g in GUARD:
 		s += g.v * cnt("g", g.id)
-	return s
+	return s * (1.25 if has_d("mgr", "sec") else 1.0)
 
 func threat(m := 1.0) -> float:
-	return m * (8.0 + 4.0 * pow(income(), 0.8))
+	return m * (8.0 + 4.0 * pow(income(), 0.8)) * (1.0 + 0.02 * int(S["gold"])) * (1.3 - 0.1 * zins()) * (1.25 if is_night() else 1.0)
 
 func risk() -> float:
 	var t := threat()
@@ -299,7 +500,7 @@ func gen_order() -> Dictionary:
 	var base: float = max(prod(), 0.35)
 	var dur := 90.0 + randf() * 330.0
 	var need := base * ORDER_SHARE * dur
-	return {land=c.n, cur=c.cur, fx=c.fx, flag=c.flag, need=need, done=0.0, reward=need * (2.2 + randf() * 1.3), active=false, wait=0.0, dur=dur}
+	return {land=c.n, cur=c.cur, fx=c.fx, flag=c.flag, need=need, done=0.0, reward=need * (2.2 + randf() * 1.3) * order_m(), active=false, wait=0.0, dur=dur}
 
 func orders_tick(dt: float) -> void:
 	var o_arr: Array = S["orders"]
@@ -308,6 +509,9 @@ func orders_tick(dt: float) -> void:
 	var p := prod()
 	for i in range(o_arr.size()):
 		var o: Dictionary = o_arr[i]
+		if o.get("special", false) and not o.get("active", false) and S["gt"] > o.get("deadline", 1e18):
+			o_arr[i] = {wait=20.0, land="", active=false}
+			continue
 		if o.get("wait", 0.0) > 0.0:
 			o["wait"] -= dt
 			if o["wait"] <= 0.0:
@@ -317,9 +521,17 @@ func orders_tick(dt: float) -> void:
 			continue
 		if o.get("active", false):
 			o["done"] += p * ORDER_SHARE * dt
+			if o.get("special", false) and S["gt"] > o.get("deadline", 1e18) and o["done"] < o["need"]:
+				add_log("Gedenkmünze %s verpasst – die Frist ist abgelaufen." % o.name, "bad")
+				o_arr[i] = {wait=20.0, land="", active=false}
+				world.dirty = true
+				continue
 			if o["done"] >= o["need"]:
 				earn(o["reward"])
 				S["odone"] = int(S.get("odone", 0)) + 1
+				if o.get("special", false):
+					S["coins"].append(o.name)
+					add_log("Gedenkmünze %s geprägt! Sie steht jetzt in der Sammelvitrine." % o.name, "good")
 				add_log("Auftrag %s erledigt: %s %s geliefert, Lohn %s." % [o.land, num_cur(o.need * o.fx), o.cur, fmt(o.reward)], "good")
 				o_arr[i] = {wait=20.0, land="", active=false}
 				world.dirty = true
@@ -346,12 +558,24 @@ func decline_order(i: int) -> void:
 	S["orders"][i] = {wait=45.0, land="", active=false}
 	render()
 
+func gen_commem() -> Dictionary:
+	var left := []
+	for n in COMMEMS:
+		if not S["coins"].has(n):
+			left.append(n)
+	if left.is_empty():
+		left = COMMEMS.duplicate()
+	var nm: String = left[randi() % left.size()]
+	var base: float = max(prod(), 0.35)
+	var need := base * ORDER_SHARE * (120.0 + randf() * 120.0)
+	return {land="Sonderprägung", name=nm, cur="Stück", fx=0.5, flag=["#ffc23d", "#c9cfd2", "#ffc23d"], need=need, done=0.0, reward=need * 4.0 * order_m(), active=false, wait=0.0, special=true, deadline=S["gt"] + 600.0}
+
 func step(dt: float) -> void:
 	orders_tick(dt)
 	S["stock"] = min(cap(), float(S["stock"]) + prod() * (1.0 - ORDER_SHARE * active_orders()) * dt)
 	var d: float = min(float(S["stock"]), deliv() * dt)
 	S["stock"] -= d
-	earn(d)
+	earn(d * pay_m())
 
 func offline_catchup() -> void:
 	var away: float = clamp(now() - float(S["ts"]), 0.0, 8.0 * 3600.0)
@@ -387,7 +611,7 @@ func raid_tick(dt: float) -> void:
 				add_log("Überfall abgewehrt! Belohnung: %s." % fmt(rew), "good")
 			S["next"] = 70.0 + randf() * 80.0
 		return
-	S["next"] -= dt
+	S["next"] -= dt * (1.5 if is_night() else 1.0)
 	if S["next"] <= 0.0:
 		var lvl: int = min(GANGS.size() - 1, int(floor(log(max(1.0, income())) / log(10.0) / 2.0)))
 		S["gang"] = randi() % (lvl + 1)
@@ -458,6 +682,8 @@ func _ready() -> void:
 	add_child(http)
 	http.request_completed.connect(_on_update_response)
 	check_update(false)
+	if OS.has_environment("BB_TEST"):
+		call_deferred(OS.get_environment("BB_TEST"))
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_PAUSED or what == NOTIFICATION_WM_CLOSE_REQUEST or what == NOTIFICATION_APPLICATION_FOCUS_OUT:
@@ -469,8 +695,10 @@ func _notification(what: int) -> void:
 
 func _process(dt: float) -> void:
 	dt = min(dt, 1.0)
+	S["gt"] = float(S["gt"]) + dt
 	step(dt)
 	raid_tick(dt)
+	extras_tick(dt)
 	ui_t += dt
 	if ui_t > 0.25:
 		ui_t = 0.0
@@ -645,6 +873,7 @@ func build_ui() -> void:
 	world_box.add_child(svc)
 	var sv := SubViewport.new()
 	sv.msaa_3d = Viewport.MSAA_2X
+	sv.name = "WorldViewport"
 	svc.add_child(sv)
 	world = preload("res://world.gd").new()
 	world.main = self
@@ -717,7 +946,7 @@ func build_ui() -> void:
 	root.add_child(nav_p)
 	var nav := hb(6)
 	nav_p.add_child(nav)
-	for it in [["werk", "Werk"], ["orders", "Aufträge"], ["deliv", "Fuhrpark"], ["tech", "Technik"], ["feat", "Merkmale"], ["guard", "Schutz"], ["bank", "Bank"]]:
+	for it in [["werk", "Werk"], ["orders", "Aufträge"], ["deliv", "Fuhrpark"], ["tech", "Technik"], ["guard", "Schutz"], ["zentrale", "Zentrale"], ["bank", "Bank"]]:
 		var key: String = it[0]
 		var b := btn(it[1], func(): go(key), "light", 0)
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -730,10 +959,8 @@ func build_ui() -> void:
 	# Update-Dialog
 	update_panel = PanelContainer.new()
 	update_panel.add_theme_stylebox_override("panel", sbox(C_CARD, 26, C_GOLD, 4, 28))
-	update_panel.set_anchors_preset(Control.PRESET_CENTER)
-	update_panel.custom_minimum_size = Vector2(600, 0)
-	update_panel.visible = false
-	add_child(update_panel)
+	var upd_root := overlay(update_panel)
+	upd_root.name = "UpdRoot"
 	var uv := vb(18)
 	update_panel.add_child(uv)
 	uv.add_child(lbl("Update verfügbar", 36, C_GOLD, true))
@@ -741,12 +968,13 @@ func build_ui() -> void:
 	uv.add_child(l_update)
 	var uh := hb()
 	uv.add_child(uh)
-	var later := btn("Später", func(): update_panel.visible = false, "light", 200)
+	var later := btn("Später", func(): get_node("UpdRoot").visible = false, "light", 200)
 	var inst := btn("Herunterladen", func():
 		OS.shell_open(APK_URL)
-		update_panel.visible = false, "main", 260)
+		get_node("UpdRoot").visible = false, "main", 260)
 	uh.add_child(later)
 	uh.add_child(inst)
+	build_dialog()
 
 func toggle_world() -> void:
 	world_big = not world_big
@@ -804,6 +1032,8 @@ func render() -> void:
 			render_bank()
 		"orders":
 			render_orders()
+		"zentrale":
+			render_zentrale()
 		_:
 			render_list()
 	update_ui()
@@ -919,8 +1149,12 @@ func list_items() -> Array:
 			for x in VAN:
 				out.append({k="v:" + x.id, n=x.n, c=cnt("v", x.id), d="%s · %s/s je Fahrzeug" % [x.d, fmt(x.r * del_m())], multi=true, b=x.b})
 		"tech":
-			for x in TECH:
-				out.append({k="t:" + x.id, n=x.n, d=x.d, done=has_flag("t", x.id), price=x.c})
+			if tsub == "feat":
+				for x in FEAT:
+					out.append({k="f:" + x.id, n=x.n, d="%s · Falschgeld −%d %%" % [x.d, x.red], done=has_flag("f", x.id), price=x.c})
+			else:
+				for x in TECH:
+					out.append({k="t:" + x.id, n=x.n, d=x.d, done=has_flag("t", x.id), price=x.c})
 		"feat":
 			for x in FEAT:
 				out.append({k="f:" + x.id, n=x.n, d="%s · Falschgeld −%d %%" % [x.d, x.red], done=has_flag("f", x.id), price=x.c})
@@ -930,7 +1164,29 @@ func list_items() -> Array:
 	return out
 
 func render_list() -> void:
-	head_title(HEAD[view][0], HEAD[view][1])
+	if view == "tech":
+		var seg := PanelContainer.new()
+		seg.add_theme_stylebox_override("panel", sbox(C_CARD, 20, C_LINE, 2, 6))
+		content.add_child(seg)
+		var sh := hb(6)
+		seg.add_child(sh)
+		for it in [["tech", "Technik"], ["feat", "Sicherheitsmerkmale %d/%d" % [feat_n(), FEAT.size()]]]:
+			var key: String = it[0]
+			var on := tsub == key
+			var b := btn(it[1], func():
+				tsub = key
+				render(), "main" if on else "light", 0)
+			b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			if not on:
+				b.add_theme_stylebox_override("normal", sbox(Color(0, 0, 0, 0), 16, Color(0, 0, 0, 0), 0, 6))
+			sh.add_child(b)
+		var hk := "feat" if tsub == "feat" else "tech"
+		content.add_child(lbl(HEAD[hk][1], 24, C_MUT, false, true))
+	else:
+		head_title(HEAD[view][0], HEAD[view][1])
+	if view == "deliv":
+		var el := int(S["escort"])
+		extra_card("Begleitschutz Stufe %d/6" % el, "Polizei begleitet die Geldtransporter. Senkt die Gefahr von Überfällen unterwegs.", "escort", "Voll" if el >= 6 else fmt(escort_cost()), S["cash"] >= escort_cost(), el >= 6)
 	if view == "guard":
 		var p := card()
 		var v := vb(8)
@@ -968,6 +1224,21 @@ func render_list() -> void:
 
 func render_orders() -> void:
 	head_title("Aufträge", "Länder außerhalb der EU bestellen Münzen und Scheine. Jeder laufende Auftrag nutzt 20 % deiner Herstellung und zahlt am Ende einen hohen Lohn.")
+	var hp := card()
+	var hr := hb(14)
+	hp.add_child(hr)
+	var hl := vb(4)
+	hl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	hr.add_child(hl)
+	hl.add_child(lbl("Falschgeld-Jagd", 28, C_INK, true))
+	var hd := lbl("", 23, C_MUT, false, true)
+	hl.add_child(hd)
+	var hb2 := btn("Starten", func(): start_hunt(), "main", 200)
+	hb2.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	hr.add_child(hb2)
+	refs["hunt"] = {btn=hb2, desc=hd}
+	while S["orders"].size() < 3:
+		S["orders"].append(gen_order())
 	for i in range(S["orders"].size()):
 		var o: Dictionary = S["orders"][i]
 		var idx := i
@@ -990,11 +1261,14 @@ func render_orders() -> void:
 			flag.add_child(cr)
 		flag.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		top.add_child(flag)
-		var t := lbl(o.land, 30, C_INK, true)
+		var t := lbl(o.get("name", o.land) if o.get("special", false) else o.land, 30, C_GOLD if o.get("special", false) else C_INK, true, true)
 		t.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		top.add_child(t)
 		top.add_child(lbl("Lohn " + fmt(o.reward), 26, C_GOLD, true))
-		v.add_child(lbl("%s %s herstellen" % [num_cur(o.need * o.fx), o.cur], 25, C_INK, false, true))
+		if o.get("special", false):
+			v.add_child(lbl("Sonderprägung für die Sammelvitrine · Lohn ×4 · begrenzte Zeit", 25, C_INK, false, true))
+		else:
+			v.add_child(lbl("%s %s herstellen" % [num_cur(o.need * o.fx), o.cur], 25, C_INK, false, true))
 		var bar := pbar(12)
 		v.add_child(bar)
 		var row := hb(12)
@@ -1010,7 +1284,37 @@ func render_orders() -> void:
 	content.add_child(lbl("Bis zu 3 Aufträge werden angeboten. Ist einer erledigt, kommt nach kurzer Zeit ein neuer. Erledigt bisher: %d" % int(S.get("odone", 0)), 22, C_MUT, false, true))
 
 func render_bank() -> void:
-	head_title("Bank", "Reform, App, Spielstand und Lagebericht.")
+	head_title("Bank", "Belohnungen, Erfolge, Reform, Spielstand und Lagebericht.")
+	var rp := card()
+	var rv := vb(10)
+	rp.add_child(rv)
+	rv.add_child(lbl("Belohnungen", 29, C_INK, true))
+	var r1 := hb(12)
+	rv.add_child(r1)
+	var dl := lbl("Tägliche Belohnung · Tag %d in Folge" % max(1, int(S["streak"]) + (1 if daily_ready() else 0)), 23, C_MUT, false, true)
+	r1.add_child(dl)
+	var db := btn("Abholen" if daily_ready() else "Morgen wieder", func(): claim_daily(), "main", 230)
+	db.disabled = not daily_ready()
+	r1.add_child(db)
+	var r2b := hb(12)
+	rv.add_child(r2b)
+	var bl := lbl("", 23, C_MUT, false, true)
+	r2b.add_child(bl)
+	var bb := btn("Glückskiste öffnen", func(): open_box(), "main", 230)
+	r2b.add_child(bb)
+	refs["box"] = {btn=bb, desc=bl}
+	var ap := card()
+	var av := vb(6)
+	ap.add_child(av)
+	av.add_child(lbl("Erfolge %d/%d · +%d %% Herstellung" % [ach_n(), ACH.size(), ach_n() * 2], 29, C_INK, true))
+	for a in ACH:
+		var got: bool = S["ach"].has(a.id)
+		av.add_child(lbl(("★ " if got else "☆ ") + a.n + " – " + a.d, 23, C_GOLD if got else C_MUT, got, true))
+	var cp := card()
+	var cv2 := vb(6)
+	cp.add_child(cv2)
+	cv2.add_child(lbl("Sammelvitrine: Gedenkmünzen %d" % S["coins"].size(), 29, C_INK, true))
+	cv2.add_child(lbl(" · ".join(PackedStringArray(S["coins"])) if S["coins"].size() > 0 else "Noch leer. Sonderaufträge für Gedenkmünzen erscheinen bei den Aufträgen.", 23, C_GOLD if S["coins"].size() > 0 else C_MUT, false, true))
 	var gain := int(floor(sqrt(float(S["total"]) / 1e9)))
 	var p := card()
 	var v := vb(8)
@@ -1038,6 +1342,20 @@ func render_bank() -> void:
 	v3.add_child(r3)
 	r3.add_child(lbl("Installierte Version %s. Neue Versionen werden beim Start automatisch gesucht." % ProjectSettings.get_setting("application/config/version", "?"), 23, C_MUT, false, true))
 	r3.add_child(btn("Jetzt prüfen", func(): check_update(true), "main", 220))
+
+	var pg := card()
+	var rg := hb(14)
+	pg.add_child(rg)
+	var lg := vb(2)
+	lg.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	rg.add_child(lg)
+	lg.add_child(lbl("Grafik", 29, C_INK, true))
+	lg.add_child(lbl("Hoch: Schatten und Kantenglättung. Sparsam: läuft flüssiger auf älteren Handys.", 23, C_MUT, false, true))
+	rg.add_child(btn("Hoch" if int(S["gfx"]) == 1 else "Sparsam", func():
+		S["gfx"] = 0 if int(S["gfx"]) == 1 else 1
+		world.apply_quality()
+		save_game()
+		render(), "light", 200))
 
 	var p4 := card()
 	var v4 := vb(8)
@@ -1213,6 +1531,7 @@ func update_ui() -> void:
 		if o.get("land", "") != "" and not o.get("active", false) and o.get("wait", 0.0) <= 0.0:
 			open_n += 1
 	nav_btns["orders"].text = "Aufträge %d" % open_n if open_n > 0 else "Aufträge"
+	nav_btns["bank"].text = "Bank •" if (daily_ready() or box_wait() <= 0.0) else "Bank"
 
 	if view == "werk":
 		if hall == "lager" and refs.has("lager"):
@@ -1253,9 +1572,18 @@ func update_ui() -> void:
 				r.rate.text = fmt(l.r * base_mul(l)) + "/s je Maschine"
 				r.desc.text = ("Gesperrt: benötigt %d Sicherheitsmerkmale (du hast %d)" % [int(l.req), feat_n()]) if lk else "Bauplatz frei · " + l.d
 		return
+	update_extras()
 	if view == "bank":
+		if refs.has("box"):
+			var w := box_wait()
+			refs["box"].btn.disabled = w > 0.0
+			refs["box"].desc.text = "Glückskiste bereit!" if w <= 0.0 else "Glückskiste in %s" % dur_txt(w)
 		return
 	if view == "orders":
+		if refs.has("hunt"):
+			var hr2: Dictionary = refs["hunt"]
+			hr2.btn.disabled = not hunt_ready()
+			hr2.desc.text = ("Erkenne die gefälschte Banknote · %d bisher erkannt" % int(S["fakes"])) if hunt_ready() else "Nächste Runde in %s" % dur_txt(float(S["hunt_next"]) - float(S["gt"]))
 		var p2 := prod()
 		for i in range(S["orders"].size()):
 			var key := "o%d" % i
@@ -1268,10 +1596,13 @@ func update_ui() -> void:
 				continue
 			r.bar.value = o.done / o.need * 100.0
 			var rest: float = (o.need - o.done) / max(0.001, p2 * ORDER_SHARE)
+			var frist := ""
+			if o.get("special", false):
+				frist = " · Frist %s" % dur_txt(max(0.0, o.deadline - S["gt"]))
 			if o.get("active", false):
-				r.info.text = "%d %% fertig · noch ca. %s" % [int(o.done / o.need * 100.0), dur_txt(rest)]
+				r.info.text = "%d %% fertig · noch ca. %s%s" % [int(o.done / o.need * 100.0), dur_txt(rest), frist]
 			else:
-				r.info.text = "Dauer ca. %s bei deiner Herstellung" % dur_txt(rest)
+				r.info.text = "Dauer ca. %s bei deiner Herstellung%s" % [dur_txt(rest), frist]
 		return
 	if view == "guard" and refs.has("risk"):
 		var r: Dictionary = refs["risk"]
@@ -1316,7 +1647,7 @@ func _on_update_response(result: int, code: int, _headers: PackedStringArray, bo
 	var mine := version_num(str(ProjectSettings.get_setting("application/config/version", "0")))
 	if latest > mine:
 		l_update.text = "Version %s ist da. Tippe auf „Herunterladen“, öffne danach die Datei und tippe auf „Installieren“. Dein Spielstand bleibt erhalten." % tag
-		update_panel.visible = true
+		get_node("UpdRoot").visible = true
 	elif manual_check:
 		add_log("Du hast die neueste Version (%s)." % ProjectSettings.get_setting("application/config/version", "?"), "good")
 
@@ -1328,3 +1659,497 @@ func version_num(v: String) -> int:
 	for i in range(3 - min(3, parts.size())):
 		n *= 10000
 	return n
+
+# ================================================================ Zusatzsysteme
+var extra_t := 0.0
+var dlg: PanelContainer
+var dlg_box: VBoxContainer
+var tsub := "tech"
+
+func extras_tick(dt: float) -> void:
+	var gt: float = S["gt"]
+	# abgelaufene Effekte entfernen
+	var keep := []
+	for f in S["fx"]:
+		if f.until > gt:
+			keep.append(f)
+	S["fx"] = keep
+	# Ereignisse
+	if S["ev_cur"] == "" and S["warn"] <= 0.0:
+		S["ev_next"] = float(S["ev_next"]) - dt
+		if S["ev_next"] <= 0.0 and income() > 0.5:
+			S["ev_next"] = 180.0 + randf() * 240.0
+			var ev: Dictionary = EVENTS[randi() % EVENTS.size()]
+			S["ev_cur"] = ev.id
+			show_event(ev)
+	# Gedenkmünzen
+	S["comm_next"] = float(S["comm_next"]) - dt
+	if S["comm_next"] <= 0.0 and prod() > 1.0:
+		S["comm_next"] = 600.0 + randf() * 300.0
+		var has_special := false
+		for o in S["orders"]:
+			if o.get("special", false):
+				has_special = true
+		if not has_special:
+			for i in range(S["orders"].size()):
+				var o: Dictionary = S["orders"][i]
+				if not o.get("active", false):
+					S["orders"][i] = gen_commem()
+					add_log("Sonderauftrag: Gedenkmünze %s – 10 Minuten Zeit!" % S["orders"][i].name, "good")
+					if view == "orders":
+						render()
+					break
+	# Überfall auf Geldtransport
+	S["amb_next"] = float(S["amb_next"]) - dt
+	if S["amb_next"] <= 0.0:
+		S["amb_next"] = 200.0 + randf() * 220.0
+		if income() > 1.0:
+			var chance := 0.6 / (1.0 + int(S["escort"]))
+			if randf() < chance:
+				var loss: float = min(float(S["cash"]) * 0.12, income() * 45.0)
+				S["cash"] -= loss
+				add_log("Ein Geldtransport wurde unterwegs überfallen! Verlust: %s. Begleitschutz im Fuhrpark hilft." % fmt(loss), "bad")
+			else:
+				var rew := income() * 10.0
+				earn(rew)
+				add_log("Überfall auf einen Geldtransport vereitelt! Prämie: %s." % fmt(rew), "good")
+	# alle 2 s: Werksleiter und Erfolge
+	extra_t += dt
+	if extra_t >= 2.0:
+		extra_t = 0.0
+		managers_tick()
+		check_ach()
+
+func managers_tick() -> void:
+	var bought := false
+	for hall_note in [false, true]:
+		var mid := "note" if hall_note else "coin"
+		if not (has_d("mgr", mid) and S["auto"].get(mid, true)):
+			continue
+		var best := {}
+		var best_c := 1e30
+		for l in LINES:
+			if bool(l.get("note", false)) != hall_note:
+				continue
+			var c := cnt("l", l.id)
+			if c == 0:
+				continue
+			var pr := cost_n(l.b, c, 1)
+			if pr < best_c:
+				best_c = pr
+				best = l
+		if not best.is_empty() and best_c < float(S["cash"]) * 0.2:
+			S["cash"] -= best_c
+			S["l"][best.id] = cnt("l", best.id) + 1
+			bought = true
+	if has_d("mgr", "fleet") and S["auto"].get("fleet", true) and prod() > deliv() * 1.05:
+		var bv := {}
+		var bs := 0.0
+		for v in VAN:
+			var pr := cost_n(v.b, cnt("v", v.id), 1)
+			if pr < float(S["cash"]) * 0.2 and v.r / pr > bs:
+				bs = v.r / pr
+				bv = v
+		if not bv.is_empty():
+			S["cash"] -= cost_n(bv.b, cnt("v", bv.id), 1)
+			S["v"][bv.id] = cnt("v", bv.id) + 1
+			bought = true
+	if has_d("mgr", "sec") and S["auto"].get("sec", true) and risk() > 40.0:
+		var bg := {}
+		var bs2 := 0.0
+		for g in GUARD:
+			var pr := cost_n(g.b, cnt("g", g.id), 1)
+			if pr < float(S["cash"]) * 0.2 and g.v / pr > bs2:
+				bs2 = g.v / pr
+				bg = g
+		if not bg.is_empty():
+			S["cash"] -= cost_n(bg.b, cnt("g", bg.id), 1)
+			S["g"][bg.id] = cnt("g", bg.id) + 1
+			bought = true
+	if bought:
+		world.dirty = true
+		if view in ["werk", "deliv", "guard"]:
+			render()
+
+func ach_done(id: String) -> bool:
+	match id:
+		"a1": return S["life"] >= 1e6
+		"a2": return S["life"] >= 1e9
+		"a3": return S["life"] >= 1e12
+		"a4": return int(S["won"]) >= 10
+		"a5": return int(S["won"]) >= 50
+		"a6":
+			for l in LINES:
+				if l.get("note", false) and cnt("l", l.id) > 0:
+					return true
+			return false
+		"a7":
+			for l in LINES:
+				if cnt("l", l.id) == 0:
+					return false
+			return true
+		"a8", "a9":
+			for l in LINES:
+				if cnt("l", l.id) >= (10 if id == "a8" else 100):
+					return true
+			return false
+		"a10": return int(S["odone"]) >= 5
+		"a11": return int(S["odone"]) >= 25
+		"a12": return S["coins"].size() >= 1
+		"a13": return feat_n() >= FEAT.size()
+		"a14": return int(S["fakes"]) >= 10
+		"a15": return int(S["rep"]) >= 1
+		"a16": return int(S["gold"]) >= 10
+		"a17": return S["sites"].size() >= SITES.size()
+		"a18": return int(S["streak"]) >= 7
+	return false
+
+func check_ach() -> void:
+	for a in ACH:
+		if not S["ach"].has(a.id) and ach_done(a.id):
+			S["ach"][a.id] = 1
+			add_log("Erfolg freigeschaltet: %s (+2 %% Herstellung für immer)" % a.n, "good")
+
+# ---------------------------------------------------------------- Dialoge
+var dlg_root: Control
+
+func overlay(panel: PanelContainer) -> Control:
+	var root := ColorRect.new()
+	root.color = Color(0, 0, 0, 0.55)
+	root.set_anchors_preset(Control.PRESET_FULL_RECT)
+	root.visible = false
+	add_child(root)
+	var cc := CenterContainer.new()
+	cc.set_anchors_preset(Control.PRESET_FULL_RECT)
+	root.add_child(cc)
+	panel.custom_minimum_size = Vector2(650, 0)
+	cc.add_child(panel)
+	return root
+
+func build_dialog() -> void:
+	dlg = PanelContainer.new()
+	dlg.add_theme_stylebox_override("panel", sbox(C_CARD, 26, C_GOLD, 4, 28))
+	dlg_root = overlay(dlg)
+	dlg_box = vb(16)
+	dlg.add_child(dlg_box)
+
+func open_dialog(title: String, text: String) -> void:
+	for c in dlg_box.get_children():
+		dlg_box.remove_child(c)
+		c.queue_free()
+	dlg_box.add_child(lbl(title, 36, C_GOLD, true, true))
+	if text != "":
+		dlg_box.add_child(lbl(text, 26, C_INK, false, true))
+	dlg_root.visible = true
+
+func close_dialog() -> void:
+	dlg_root.visible = false
+
+func show_event(ev: Dictionary) -> void:
+	var cost: float = max(50.0, income() * 60.0 * float(ev.get("mins", 0.0)))
+	open_dialog(ev.t, ev.d)
+	var col := vb(10)
+	dlg_box.add_child(col)
+	var a_txt: String = ev.a
+	if ev.has("mins"):
+		a_txt += " (%s)" % fmt(cost)
+	if ev.has("bonus"):
+		a_txt += " (+%s)" % fmt(max(50.0, income() * 60.0 * float(ev.bonus)))
+	var ba := btn(a_txt, func(): event_choice(ev, true, cost), "main", 0)
+	ba.disabled = ev.has("mins") and float(S["cash"]) < cost
+	col.add_child(ba)
+	col.add_child(btn(ev.b, func(): event_choice(ev, false, cost), "light", 0))
+	for b in col.get_children():
+		b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		b.custom_minimum_size = Vector2(590, 84)
+
+func event_choice(ev: Dictionary, a: bool, cost: float) -> void:
+	close_dialog()
+	S["ev_cur"] = ""
+	var gt: float = S["gt"]
+	if a:
+		if ev.has("mins"):
+			S["cash"] -= cost
+			add_log("%s: bezahlt (%s)." % [ev.t, fmt(cost)], "good")
+		if ev.has("fxa"):
+			S["fx"].append({k=ev.fxa.k, m=ev.fxa.m, until=gt + ev.fxa.dur})
+			add_log("%s: Sonderschicht läuft!" % ev.t, "good")
+		if ev.has("bonus"):
+			var b: float = max(50.0, income() * 60.0 * float(ev.bonus))
+			earn(b)
+			add_log("%s: Lob vom Rechnungshof, Bonus %s." % [ev.t, fmt(b)], "good")
+	elif ev.has("fx"):
+		var f := {k=ev.fx.k, m=ev.fx.m, until=gt + ev.fx.dur}
+		if ev.fx.k == "line":
+			var built := []
+			for l in LINES:
+				if cnt("l", l.id) > 0:
+					built.append(l.id)
+			if built.is_empty():
+				return
+			f["id"] = built[randi() % built.size()]
+		S["fx"].append(f)
+		add_log("%s: abgewartet." % ev.t, "bad")
+	world.dirty = true
+	save_game()
+	update_ui()
+
+# ---------------------------------------------------------------- Falschgeld-Jagd
+func hunt_ready() -> bool:
+	return float(S["gt"]) >= float(S["hunt_next"])
+
+func start_hunt() -> void:
+	open_dialog("Falschgeld-Jagd", "Eine dieser Banknoten ist gefälscht: Bei einem Sicherheitsmerkmal stimmt etwas nicht. Tippe auf die Fälschung!")
+	var grid := GridContainer.new()
+	grid.columns = 2
+	grid.add_theme_constant_override("h_separation", 12)
+	grid.add_theme_constant_override("v_separation", 12)
+	dlg_box.add_child(grid)
+	var fake := randi() % 4
+	var vals := [[5, "#9aa3a8"], [10, "#d96a6a"], [20, "#5b8fd0"], [50, "#e09a3a"], [100, "#6fae8f"], [200, "#d9c25a"]]
+	var feats := FEATNAMES.duplicate()
+	feats.shuffle()
+	feats = feats.slice(0, 4)
+	var bad_feat := randi() % 4
+	for i in range(4):
+		var v: Array = vals[randi() % vals.size()]
+		var idx := i
+		var b := Button.new()
+		b.custom_minimum_size = Vector2(285, 250)
+		var st := sbox(Color(v[1]), 16, Color("#ffffff"), 3, 10)
+		b.add_theme_stylebox_override("normal", st)
+		b.add_theme_stylebox_override("hover", st)
+		b.add_theme_stylebox_override("pressed", sbox(Color(v[1]).darkened(0.2), 16, Color("#ffffff"), 3, 10))
+		b.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+		var txt := "%d EURO\n" % v[0]
+		for k in range(4):
+			var fn: Array = feats[k]
+			txt += "✓ " + (fn[1] if (i == fake and k == bad_feat) else fn[0]) + "\n"
+		b.text = txt.strip_edges()
+		b.add_theme_font_size_override("font_size", 22)
+		b.add_theme_color_override("font_color", Color("#13262a"))
+		b.add_theme_color_override("font_hover_color", Color("#13262a"))
+		b.add_theme_color_override("font_pressed_color", Color("#13262a"))
+		b.pressed.connect(func(): hunt_pick(idx == fake))
+		grid.add_child(b)
+	dlg_box.add_child(btn("Abbrechen", func(): close_dialog(), "light", 0))
+
+func hunt_pick(ok: bool) -> void:
+	close_dialog()
+	S["hunt_next"] = float(S["gt"]) + 180.0
+	if ok:
+		var rew: float = max(100.0, income() * 120.0)
+		earn(rew)
+		S["fakes"] = int(S["fakes"]) + 1
+		add_log("Fälschung erkannt! Belohnung %s." % fmt(rew), "good")
+	else:
+		add_log("Das war eine echte Banknote. In 3 Minuten gibt es eine neue Chance.", "bad")
+	render()
+
+# ---------------------------------------------------------------- Belohnungen
+func today() -> int:
+	return int(now() / 86400.0)
+
+func daily_ready() -> bool:
+	return int(S["daily_day"]) != today()
+
+func claim_daily() -> void:
+	if not daily_ready():
+		return
+	S["streak"] = int(S["streak"]) + 1 if int(S["daily_day"]) == today() - 1 else 1
+	S["daily_day"] = today()
+	var st: int = min(int(S["streak"]), 7)
+	var rew: float = max(100.0 * st, income() * 60.0 * 5.0 * st)
+	earn(rew)
+	add_log("Tägliche Belohnung (Tag %d in Folge): %s." % [int(S["streak"]), fmt(rew)], "good")
+	save_game()
+	render()
+
+func box_wait() -> float:
+	return max(0.0, 14400.0 - (now() - float(S["box_ts"])))
+
+func open_box() -> void:
+	if box_wait() > 0.0:
+		return
+	S["box_ts"] = now()
+	var r := randf()
+	if r < 0.5:
+		var rew: float = max(200.0, income() * 60.0 * (15.0 + randf() * 30.0))
+		earn(rew)
+		add_log("Glückskiste: %s Bargeld!" % fmt(rew), "good")
+	elif r < 0.75:
+		S["gold"] = int(S["gold"]) + 1
+		add_log("Glückskiste: ein Goldbarren für die Goldreserve!", "good")
+		world.dirty = true
+	else:
+		var any := false
+		for o in S["orders"]:
+			if o.get("active", false):
+				o["done"] = min(o["need"], o["done"] + o["need"] * 0.5)
+				any = true
+		if any:
+			add_log("Glückskiste: Alle laufenden Aufträge sind 50 % weiter!", "good")
+		else:
+			var rew2: float = max(300.0, income() * 60.0 * 30.0)
+			earn(rew2)
+			add_log("Glückskiste: %s Bargeld!" % fmt(rew2), "good")
+	save_game()
+	render()
+
+# ---------------------------------------------------------------- Zentrale
+func gold_cost() -> float:
+	return 10000.0 * pow(1.25, int(S["gold"]))
+
+func shred_cost() -> float:
+	return 2000.0 * pow(6.0, int(S["shred"]))
+
+func escort_cost() -> float:
+	return 500.0 * pow(5.0, int(S["escort"]))
+
+func buy_extra(k: String) -> void:
+	var parts := k.split(":")
+	var t := parts[0]
+	var id := parts[1] if parts.size() > 1 else ""
+	match t:
+		"mgr":
+			for m in MGR:
+				if m.id == id and not has_d("mgr", id) and S["cash"] >= m.c:
+					S["cash"] -= m.c
+					S["mgr"][id] = true
+					S["auto"][id] = true
+					add_log("Eingestellt: %s." % m.n, "good")
+		"auto":
+			S["auto"][id] = not S["auto"].get(id, true)
+		"site":
+			for m in SITES:
+				if m.id == id and not has_d("sites", id) and S["cash"] >= m.c:
+					S["cash"] -= m.c
+					S["sites"][id] = true
+					add_log("Standort eröffnet: %s." % m.n, "good")
+		"gold":
+			if S["cash"] >= gold_cost():
+				S["cash"] -= gold_cost()
+				S["gold"] = int(S["gold"]) + 1
+				add_log("Goldbarren Nr. %d eingelagert." % int(S["gold"]), "good")
+		"shred":
+			if int(S["shred"]) < 10 and S["cash"] >= shred_cost():
+				S["cash"] -= shred_cost()
+				S["shred"] = int(S["shred"]) + 1
+				add_log("Schredder-Halle auf Stufe %d ausgebaut." % int(S["shred"]), "good")
+		"escort":
+			if int(S["escort"]) < 6 and S["cash"] >= escort_cost():
+				S["cash"] -= escort_cost()
+				S["escort"] = int(S["escort"]) + 1
+				add_log("Begleitschutz verstärkt (Stufe %d)." % int(S["escort"]), "good")
+		"museum":
+			if int(S["museum"]) == 0 and int(S["rep"]) >= 1 and S["cash"] >= 1e6:
+				S["cash"] -= 1e6
+				S["museum"] = 1
+				add_log("Das Bundesbank-Museum ist eröffnet!", "good")
+	world.dirty = true
+	save_game()
+	render()
+
+func extra_card(title: String, desc: String, key: String, label: String, ok: bool, done := false) -> void:
+	var p := card()
+	var row := hb(14)
+	p.add_child(row)
+	var left := vb(4)
+	left.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(left)
+	left.add_child(lbl(title, 28, C_INK, true, true))
+	left.add_child(lbl(desc, 23, C_MUT, false, true))
+	var b := btn(label, func(): buy_extra(key), "main", 220)
+	b.disabled = not ok or done
+	b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(b)
+	refs["x:" + key] = {btn=b}
+
+func section(t: String) -> void:
+	var l := lbl(t, 30, C_GOLD, true)
+	content.add_child(l)
+
+func render_zentrale() -> void:
+	head_title("Zentrale", "Personal, Standorte, Gold, Schredder, Leitzins und Museum.")
+	section("Werksleitung")
+	for m in MGR:
+		if has_d("mgr", m.id):
+			var on: bool = S["auto"].get(m.id, true)
+			extra_card(m.n + " ✓", m.d, "auto:" + m.id, "Automatik an" if on else "Automatik aus", true)
+		else:
+			extra_card(m.n, m.d, "mgr:" + m.id, "Einstellen " + fmt(m.c), S["cash"] >= m.c)
+	section("Standorte")
+	for m in SITES:
+		var own := has_d("sites", m.id)
+		extra_card(m.n + (" ✓" if own else ""), m.d, "site:" + m.id, "Eröffnet" if own else fmt(m.c), S["cash"] >= m.c, own)
+	section("Goldreserve und Schredder")
+	extra_card("Goldbarren kaufen (%d im Tresor)" % int(S["gold"]), "Jeder Barren: +3 % Herstellung, lockt aber Räuber an (+2 % Bedrohung).", "gold", fmt(gold_cost()), S["cash"] >= gold_cost())
+	var sl := int(S["shred"])
+	extra_card("Schredder-Halle Stufe %d/10" % sl, "Vernichtet abgenutzte Scheine: +5 % Erlös je Stufe auf jede Auslieferung.", "shred", "Voll" if sl >= 10 else fmt(shred_cost()), S["cash"] >= shred_cost(), sl >= 10)
+	section("Leitzins")
+	var zp := card()
+	var zv := vb(8)
+	zp.add_child(zv)
+	var zl := lbl("", 28, C_INK, true)
+	zv.add_child(zl)
+	var sl2 := HSlider.new()
+	sl2.min_value = 0
+	sl2.max_value = 5
+	sl2.step = 1
+	sl2.value = zins()
+	sl2.custom_minimum_size = Vector2(0, 60)
+	sl2.add_theme_icon_override("grabber", make_grabber())
+	sl2.add_theme_icon_override("grabber_highlight", make_grabber())
+	sl2.add_theme_stylebox_override("slider", sbox(C_MAIN2, 8, Color(0, 0, 0, 0), 0, 6))
+	sl2.add_theme_stylebox_override("grabber_area", sbox(C_GOLD, 8, Color(0, 0, 0, 0), 0, 6))
+	sl2.add_theme_stylebox_override("grabber_area_highlight", sbox(C_GOLD, 8, Color(0, 0, 0, 0), 0, 6))
+	zv.add_child(sl2)
+	var zd := lbl("", 23, C_MUT, false, true)
+	zv.add_child(zd)
+	var upd := func(v: float):
+		S["zins"] = int(v)
+		zl.text = "Leitzins: %d %%" % int(v)
+		zd.text = "Erlös ×%s · Bedrohung ×%s · Auftragslohn ×%s\nNiedriger Zins: mehr Geschäft, mehr Risiko. Hoher Zins: weniger Erlös, mehr Sicherheit." % [de_num(1.1 - 0.04 * v, 2), de_num(1.3 - 0.1 * v, 2), de_num(1.4 - 0.1 * v, 2)]
+	upd.call(sl2.value)
+	sl2.value_changed.connect(upd)
+	section("Museum")
+	if int(S["museum"]) > 0:
+		var mp := card()
+		var mv := vb(6)
+		mp.add_child(mv)
+		mv.add_child(lbl("Bundesbank-Museum ✓", 28, C_INK, true))
+		mv.add_child(lbl("Ausstellungsstücke: %d Währungsreformen, %d Gedenkmünzen. Bonus: +%d %% auf alles." % [int(S["rep"]), S["coins"].size(), int(S["rep"]) * 5], 23, C_MUT, false, true))
+	else:
+		extra_card("Bundesbank-Museum", "Ab der ersten Währungsreform baubar. Jede Reform wird ausgestellt: +5 % Herstellung je Reform.", "museum", fmt(1e6), int(S["rep"]) >= 1 and S["cash"] >= 1e6)
+
+func make_grabber() -> Texture2D:
+	var img := Image.create(44, 44, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0, 0, 0, 0))
+	for y in range(44):
+		for x in range(44):
+			if Vector2(x - 21.5, y - 21.5).length() < 20.0:
+				img.set_pixel(x, y, C_GOLD)
+	return ImageTexture.create_from_image(img)
+
+func update_extras() -> void:
+	for key in refs.keys():
+		if not key.begins_with("x:"):
+			continue
+		var k: String = key.substr(2)
+		var b: Button = refs[key].btn
+		if k.begins_with("mgr:"):
+			for m in MGR:
+				if "mgr:" + m.id == k:
+					b.disabled = S["cash"] < m.c
+		elif k.begins_with("site:"):
+			for m in SITES:
+				if "site:" + m.id == k and not has_d("sites", m.id):
+					b.disabled = S["cash"] < m.c
+		elif k == "gold":
+			b.disabled = S["cash"] < gold_cost()
+		elif k == "shred" and int(S["shred"]) < 10:
+			b.disabled = S["cash"] < shred_cost()
+		elif k == "escort" and int(S["escort"]) < 6:
+			b.disabled = S["cash"] < escort_cost()
+		elif k == "museum":
+			b.disabled = int(S["rep"]) < 1 or S["cash"] < 1e6
