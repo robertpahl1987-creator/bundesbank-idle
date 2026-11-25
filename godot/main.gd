@@ -178,6 +178,7 @@ var http: HTTPRequest
 var manual_check := false
 var upd_bar: ProgressBar
 var upd_btn: Button
+var upd_browser: Button
 var dl: HTTPRequest
 const UPD_FILE := "user://update.apk"
 
@@ -209,7 +210,7 @@ func start_download() -> void:
 		download_failed()
 
 func download_tick() -> void:
-	if dl == null or not upd_bar.visible:
+	if dl == null or not upd_bar.visible or dl.get_http_client_status() == HTTPClient.STATUS_DISCONNECTED:
 		return
 	var total := dl.get_body_size()
 	if total > 0:
@@ -221,22 +222,24 @@ func _on_download_done(result: int, code: int, _h: PackedStringArray, _b: Packed
 		download_failed()
 		return
 	upd_bar.value = 100
+	upd_bar.visible = false
 	upd_btn.text = "Installation startet …"
 	save_game()
 	var err := OS.shell_open(ProjectSettings.globalize_path(UPD_FILE))
 	if err != OK:
 		download_failed()
 		return
-	l_update.text = "Android fragt jetzt, ob die Aktualisierung installiert werden soll. Tippe auf „Installieren“. Beim ersten Mal musst du einmalig erlauben, dass diese App Updates installieren darf."
+	l_update.text = "Android fragt jetzt, ob die Aktualisierung installiert werden soll. Tippe auf „Installieren“. Beim ersten Mal musst du einmalig erlauben, dass diese App Updates installieren darf.\nErscheint nichts, tippe auf „Im Browser laden“."
 	upd_btn.disabled = false
 	upd_btn.text = "Erneut öffnen"
+	upd_browser.visible = true
 
 func download_failed() -> void:
 	upd_bar.visible = false
 	upd_btn.disabled = false
 	upd_btn.text = "Im Browser laden"
 	l_update.text = "Das direkte Update hat nicht geklappt. Tippe auf „Im Browser laden“ – danach die Datei öffnen und installieren."
-	upd_btn.pressed.connect(func(): OS.shell_open(APK_URL), CONNECT_ONE_SHOT)
+	upd_browser.visible = true
 var world_big := false
 
 # ---------------------------------------------------------------- Zustand
@@ -1234,6 +1237,9 @@ func build_ui() -> void:
 	upd_btn = btn("Jetzt installieren", func(): start_download(), "main", 300)
 	uh.add_child(later)
 	uh.add_child(upd_btn)
+	upd_browser = btn("Im Browser laden", func(): OS.shell_open(APK_URL), "light", 0)
+	upd_browser.visible = false
+	uv.add_child(upd_browser)
 	build_dialog()
 
 func toggle_world() -> void:
