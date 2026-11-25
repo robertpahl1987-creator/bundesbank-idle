@@ -717,6 +717,70 @@ func _notification(what: int) -> void:
 		if not S.is_empty():
 			offline_catchup()
 
+var touch_active := false
+var drag_dist := 0.0
+var drag_scrolled := false
+var fling := 0.0
+var scroll_pos := 0.0
+
+func _input(ev: InputEvent) -> void:
+	if scroll == null:
+		return
+	if ev is InputEventScreenTouch and ev.index == 0:
+		if ev.pressed:
+			touch_active = scroll.get_global_rect().has_point(ev.position) and not dlg_root.visible
+			drag_dist = 0.0
+			drag_scrolled = false
+			fling = 0.0
+			scroll_pos = scroll.scroll_vertical
+		else:
+			touch_active = false
+	elif ev is InputEventScreenDrag and ev.index == 0 and touch_active:
+		drag_dist += abs(ev.relative.y) + abs(ev.relative.x) * 0.5
+		if drag_dist > 14.0:
+			drag_scrolled = true
+		if drag_scrolled:
+			scroll_pos = clamp(scroll_pos - ev.relative.y, 0.0, max_scroll())
+			scroll.scroll_vertical = int(scroll_pos)
+			fling = -ev.velocity.y
+	elif ev is InputEventMouseButton and ev.pressed and scroll.get_global_rect().has_point(ev.position):
+		if ev.button_index == MOUSE_BUTTON_WHEEL_UP:
+			scroll.scroll_vertical -= 90
+		elif ev.button_index == MOUSE_BUTTON_WHEEL_DOWN:
+			scroll.scroll_vertical += 90
+
+func max_scroll() -> float:
+	return max(0.0, scroll.get_v_scroll_bar().max_value - scroll.size.y)
+
+func fling_tick(dt: float) -> void:
+	if touch_active or abs(fling) < 20.0:
+		fling = 0.0 if not touch_active else fling
+		return
+	scroll_pos = clamp(float(scroll.scroll_vertical) + fling * dt, 0.0, max_scroll())
+	scroll.scroll_vertical = int(scroll_pos)
+	fling *= pow(0.04, dt)
+	if scroll_pos <= 0.0 or scroll_pos >= max_scroll():
+		fling = 0.0
+
+func test_scroll() -> void:
+	var a := InputEventScreenTouch.new()
+	a.index = 0
+	a.pressed = true
+	a.position = Vector2(360, 1200)
+	Input.parse_input_event(a)
+	for i in range(10):
+		var d := InputEventScreenDrag.new()
+		d.index = 0
+		d.position = Vector2(360, 1200 - i * 40)
+		d.relative = Vector2(0, -40)
+		d.velocity = Vector2(0, -1500)
+		Input.parse_input_event(d)
+	var r := InputEventScreenTouch.new()
+	r.index = 0
+	r.pressed = false
+	r.position = Vector2(360, 800)
+	Input.parse_input_event(r)
+
 var last_scroll := 0
 var scroll_quiet := 0.0
 var wframe := 0
@@ -737,6 +801,7 @@ func world_render_tick(dt: float) -> void:
 
 func _process(dt: float) -> void:
 	dt = min(dt, 1.0)
+	fling_tick(dt)
 	world_render_tick(dt)
 	S["gt"] = float(S["gt"]) + dt
 	step(dt)
@@ -816,7 +881,9 @@ func btn(t: String, cb: Callable, kind := "main", minw := 190) -> Button:
 	b.add_theme_color_override("font_pressed_color", fg)
 	b.add_theme_color_override("font_focus_color", fg)
 	b.add_theme_color_override("font_disabled_color", C_MUT)
-	b.pressed.connect(cb)
+	b.pressed.connect(func():
+		if not drag_scrolled:
+			cb.call())
 	return b
 
 func pbar(h := 10) -> ProgressBar:
@@ -976,6 +1043,8 @@ func build_ui() -> void:
 	scroll = ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_NEVER
+	scroll.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(scroll)
 	var mc := MarginContainer.new()
 	mc.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -1033,6 +1102,8 @@ func go(v: String, h := "") -> void:
 	confirm_reset = ""
 	render()
 	scroll.scroll_vertical = 0
+	scroll_pos = 0.0
+	fling = 0.0
 
 # ---------------------------------------------------------------- Ansichten
 func clear_content() -> void:
