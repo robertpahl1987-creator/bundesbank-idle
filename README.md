@@ -1,25 +1,22 @@
 # Bundesbank Idle
 
-Idle-Aufbauspiel rund um die Euro-Herstellung: 3D-Werk mit Münzhalle, Druckhalle,
-Tresorlager, Fuhrpark, Sicherheitsmerkmalen und Schutz gegen Überfälle.
-Fan-Spiel ohne Verbindung zur Deutschen Bundesbank.
+Idle-Aufbauspiel rund um die Euro-Herstellung, gebaut mit der Spiele-Engine **Godot 4.3**:
+3D-Werk mit Münzhalle, Druckhalle, Tresorlager, Fuhrpark, Sicherheitsmerkmalen und
+Schutz gegen Überfälle. Fan-Spiel ohne Verbindung zur Deutschen Bundesbank.
 
 ## Installieren
 
-1. Unter **Releases** die neueste `BundesbankIdle.apk` aufs Handy laden.
-2. Öffnen und installieren („Installation aus unbekannten Quellen“ einmal erlauben).
+APK direkt laden:
+https://github.com/robertpahl1987-creator/bundesbank-idle/releases/latest/download/BundesbankIdle.apk
 
 ## Automatische Updates
 
-Bei jedem Start fragt die App hier nach einer neuen Version. Gibt es eine,
-erscheint „Update verfügbar“ – ein Tipp auf **Installieren** lädt und installiert sie.
-Der Spielstand bleibt erhalten. Manuell: im Spiel unter **Bank → App & Updates**.
+Beim Start prüft das Spiel, ob es eine neue Version gibt, und bietet sie zum Herunterladen an.
+Der Spielstand wird automatisch gespeichert (alle 5 Sekunden, nach jedem Kauf und beim Schließen).
 
-Jede Änderung an `main` baut automatisch eine neue APK und veröffentlicht sie als Release.
+## Aufbau
 
-## Spiel ändern
-
-Das komplette Spiel steckt in `app/src/main/assets/index.html`.
-
-Hinweis: Die App wird mit dem Schlüssel `app/debug.keystore` signiert. Er liegt
-öffentlich im Repository, damit Updates immer zur installierten App passen.
+- `godot/` – das Spiel (Godot-Projekt, Hauptdateien `main.gd` und `world.gd`)
+- `keys/app.keystore` – Signaturschlüssel, damit Updates zur installierten App passen
+- `legacy-webview-app/` – frühere Version als HTML-App (wird nicht mehr gebaut)
+- `.github/workflows/build-apk.yml` – baut bei jeder Änderung automatisch die APK
