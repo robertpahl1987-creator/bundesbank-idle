@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b5d57">
+<title>Bundesbank Idle</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet">
+<style>
+/* VOICE: ruhige Aufbau-App, klar und aufgeräumt
+   IDEA: ein Werksleitstand – Statusleiste oben, Hallen in der Mitte, Navigation unten
+   PICTURE: die Fertigungslinien mit Maschinen und laufendem Band
+   COLOUR and TYPE: Papier #f2efe6, Petrol #0b5d57, Stahlgrau, Alarmrot; Barlow + Barlow Condensed
+   LAYOUT: feste Kopfleiste, ein Bildschirm pro Bereich, Tab-Leiste unten */
+:root{color-scheme:light dark;--bg:light-dark(#f2efe6,#0d1817);--card:light-dark(#fffdf7,#13221f);--ink:light-dark(#16231f,#e6efe9);--mut:light-dark(#5d6b66,#93a8a0);--main:light-dark(#0b5d57,#3fb8a6);--main2:light-dark(#d7ebe5,#173a35);--red:light-dark(#c8102e,#ff5a6e);--gold:light-dark(#a87a00,#e2b53c);--line:light-dark(#d9d3c3,#24403a);--steel:light-dark(#4a5a5f,#8da0a6);--top:#0b5d57}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 Barlow,system-ui,sans-serif;overflow-x:clip;display:flex;flex-direction:column}
+.bar{background:var(--top);color:#fff;padding:calc(env(safe-area-inset-top) + 10px) 14px 10px;position:sticky;top:0;z-index:5;box-shadow:0 2px 8px rgba(0,0,0,.2)}
+.r1{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.cash{font:700 clamp(30px,8vw,40px)/1 'Barlow Condensed',sans-serif;white-space:nowrap}
+.inc{font-size:14px;opacity:.85}
+.shield{border:0;border-radius:20px;min-height:40px;padding:0 12px;font:700 15px 'Barlow Condensed';background:rgba(255,255,255,.15);color:#fff;white-space:nowrap;cursor:pointer}
+.shield.hot{background:var(--red)}
+.r2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1.2fr);gap:8px;margin-top:8px;font-size:13px}
+.r2 div{background:rgba(255,255,255,.1);border-radius:8px;padding:5px 8px}
+.r2 small{display:block;opacity:.75}.r2 b{font:700 15px 'Barlow Condensed';white-space:nowrap}
+.sbar{height:5px;background:rgba(255,255,255,.2);border-radius:3px;overflow:hidden;margin-top:3px}.sbar i{display:block;height:100%;background:#fff}
+.sbar.hot i{background:#ff8a99}
+.hint{font-size:13px;font-weight:600;margin-top:6px;background:#fff;color:var(--red);border-radius:6px;padding:3px 8px;display:none}
+.hint.on{display:block}
+.alarm{display:none;margin:10px 12px 0;background:var(--red);color:#fff;border-radius:12px;padding:10px 12px;font-weight:600;align-items:center;justify-content:space-between;gap:10px}
+.alarm.on{display:flex;animation:blink 1s infinite}
+.alarm button{border:0;background:#fff;color:var(--red);border-radius:8px;min-height:40px;padding:0 12px;font:700 15px 'Barlow Condensed';flex:none;cursor:pointer}
+@keyframes blink{50%{filter:brightness(1.2)}}
+main{flex:1;padding:12px 12px calc(84px + env(safe-area-inset-bottom));max-width:760px;width:100%;margin:0 auto}
+h2{font:700 24px/1.1 'Barlow Condensed',sans-serif;margin:4px 0 2px}
+.lead{color:var(--mut);font-size:14px;margin:0 0 10px}
+.seg{display:flex;gap:4px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:4px;margin-bottom:8px}
+.seg button{flex:1;min-height:42px;border:0;border-radius:9px;background:transparent;color:var(--ink);font:600 15px Barlow;cursor:pointer;line-height:1.1}
+.seg button small{display:block;font-size:12px;color:var(--mut)}
+.seg button.on{background:var(--main);color:#fff}.seg button.on small{color:#fff;opacity:.85}
+.amt{display:flex;gap:6px;align-items:center;justify-content:flex-end;margin-bottom:8px;font-size:13px;color:var(--mut)}
+.amt button{min-height:34px;min-width:48px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--ink);font:600 14px Barlow;cursor:pointer}
+.amt button.on{border-color:var(--main);color:var(--main);box-shadow:inset 0 0 0 1px var(--main)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:8px}
+.card.empty{background:transparent;border:2px dashed var(--line)}
+.card.done{border-color:var(--main)}
+.ch{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.ch b{font-size:16px}.ch span{font:700 15px 'Barlow Condensed';color:var(--main);white-space:nowrap}
+.row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;margin-top:4px}
+.row small,.sm{color:var(--mut);font-size:13px;display:block}
+.buy{min-height:44px;min-width:104px;border-radius:10px;border:0;background:var(--main);color:#fff;font:700 15px 'Barlow Condensed',sans-serif;cursor:pointer;white-space:nowrap;padding:0 12px}
+.buy:disabled{background:var(--line);color:var(--mut);cursor:default}
+.buy.red{background:var(--red)}
+button:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+.belt{display:grid;grid-template-columns:auto minmax(0,1fr) 22px;gap:6px;align-items:end;margin:6px 0 2px}
+.machs{display:flex;gap:3px;align-items:end}
+.m{width:14px;height:22px;border-radius:3px 3px 1px 1px;background:var(--steel);position:relative;margin-top:7px}
+.m::before{content:'';position:absolute;left:4px;width:6px;height:8px;top:-7px;background:var(--steel);border-radius:2px;animation:pist .7s ease-in-out infinite alternate;animation-delay:var(--d)}
+.m.pr{width:20px;height:18px;background:#5f7d8a}
+.more{font:700 13px 'Barlow Condensed';color:var(--mut);align-self:center}
+@keyframes pist{to{transform:translateY(4px)}}
+.conv{position:relative;height:20px;border-radius:4px;overflow:hidden;background:repeating-linear-gradient(90deg,#2b3436 0 8px,#3b4648 8px 16px);animation:roll .6s linear infinite}
+@keyframes roll{to{background-position:16px 0}}
+.it{position:absolute;top:3px;left:-26px;animation:mv var(--dur) linear infinite;animation-delay:var(--dl)}
+.it.coin{width:14px;height:14px;border-radius:50%;box-shadow:inset 0 0 0 2px rgba(0,0,0,.2)}
+.it.bill{width:22px;height:12px;top:4px;border-radius:2px;box-shadow:inset 0 0 0 1px rgba(0,0,0,.25)}
+@keyframes mv{to{left:100%}}
+.bin{width:22px;height:20px;border-radius:3px;background:var(--main);opacity:.8}
+.bar2{height:8px;background:var(--main2);border-radius:5px;overflow:hidden;margin-top:6px}
+.bar2 i{display:block;height:100%;background:var(--main);transition:width .3s}
+.bar2.thin{height:5px;margin-top:4px}.bar2.hot i{background:var(--red)}
+.dock{position:relative;height:50px;margin:8px 0 4px;border-bottom:3px solid var(--steel);overflow:hidden}
+.dock svg{position:absolute;top:6px;left:0;width:84px;height:40px;animation:drive var(--sp,6s) linear infinite}
+@keyframes drive{from{transform:translateX(-90px)}to{transform:translateX(800px)}}
+.log p{margin:4px 0;border-bottom:1px dashed var(--line);padding-bottom:4px;font-size:14px}
+.log .bad{color:var(--red)}.log .good{color:var(--main)}
+.nav{position:fixed;left:0;right:0;bottom:0;z-index:6;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));background:var(--card);border-top:1px solid var(--line);padding:4px 4px calc(4px + env(safe-area-inset-bottom))}
+.nav button{border:0;background:transparent;color:var(--mut);font:600 12px Barlow;min-height:56px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;cursor:pointer;border-radius:10px;position:relative}
+.nav svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.nav button.on{color:var(--main);background:var(--main2)}
+.dot{position:absolute;top:6px;right:calc(50% - 18px);width:9px;height:9px;border-radius:50%;background:var(--red);display:none}
+.dot.on{display:block}
+.note{color:var(--mut);font-size:12px;margin-top:14px}
+@media(prefers-reduced-motion:reduce){.m::before,.conv,.it,.dock svg,.alarm.on{animation:none}}
+</style>
+</head>
+<body>
+<header class="bar">
+  <div class="r1">
+    <div><div class="cash" id="cash">0 €</div><div class="inc" id="inc">+0 € pro Sekunde</div></div>
+    <button class="shield" id="shield" data-go="guard">Risiko 0 %</button>
+  </div>
+  <div class="r2">
+    <div><small>Herstellung</small><b id="prod">0</b></div>
+    <div><small>Auslieferung</small><b id="del">0</b></div>
+    <div><small>Tresorlager <span id="stockP"></span></small><b id="stockT">0</b><div class="sbar" id="stockB"><i style="width:0"></i></div></div>
+  </div>
+  <div class="hint" id="hint"></div>
+</header>
+<div class="alarm" id="alarm"><span id="alarmT"></span><button data-go="guard">Zum Schutz</button></div>
+<main id="view"></main>
+<nav class="nav" id="nav">
+  <button data-v="werk" class="on"><svg viewBox="0 0 24 24"><path d="M3 21V10l5 3V10l5 3V10l5 3V4h3v17z"/><path d="M7 17h2M12 17h2M17 17h1"/></svg>Werk</button>
+  <button data-v="deliv"><svg viewBox="0 0 24 24"><path d="M2 7h12v10H2zM14 10h4l3 3v4h-7"/><circle cx="6" cy="18" r="2"/><circle cx="17" cy="18" r="2"/></svg>Fuhrpark</button>
+  <button data-v="tech"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M5 19l2-2M17 7l2-2"/></svg>Technik</button>
+  <button data-v="feat"><svg viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="15" cy="12" r="3"/><path d="M6 10v4"/></svg>Merkmale</button>
+  <button data-v="guard"><svg viewBox="0 0 24 24"><path d="M12 2l8 3v6c0 5-3.5 9-8 11-4.5-2-8-6-8-11V5z"/></svg>Schutz<i class="dot" id="gdot"></i></button>
+  <button data-v="bank"><svg viewBox="0 0 24 24"><path d="M3 9l9-5 9 5M5 9v9M10 9v9M14 9v9M19 9v9M3 20h18"/></svg>Bank</button>
+</nav>
+
+<script>
+{
+const LINES=[
+ {id:'c1',n:'1-Cent-Linie',d:'Kupferstahl-Rohlinge',b:15,r:0.5,col:'#b87333'},
+ {id:'c10',n:'10-Cent-Linie',d:'Nordisches Gold',b:120,r:3,col:'#d4a826'},
+ {id:'c50',n:'50-Cent-Linie',d:'Größte Cent-Münze',b:1300,r:16,col:'#e0b83a'},
+ {id:'e1',n:'1-Euro-Linie',d:'Bimetall, Adler-Motiv',b:14000,r:90,col:'radial-gradient(#c9cfd2 45%,#d4a826 47%)'},
+ {id:'e2',n:'2-Euro-Linie',d:'Mit Randschrift',b:130000,r:500,col:'radial-gradient(#d4a826 45%,#c9cfd2 47%)'},
+ {id:'s5',n:'5-Euro-Linie',d:'Grau, Klassik',b:1.4e6,r:2800,note:1,req:2,col:'#9aa3a8'},
+ {id:'s20',n:'20-Euro-Linie',d:'Blau, Gotik',b:2e7,r:16000,note:1,req:4,col:'#5b8fd0'},
+ {id:'s100',n:'100-Euro-Linie',d:'Grün, Barock',b:3.3e8,r:90000,note:1,req:6,col:'#6fae8f'},
+ {id:'s200',n:'200-Euro-Linie',d:'Gelb, Eisen & Glas',b:5.1e9,r:520000,note:1,req:8,col:'#e0c25a'}];
+const MS=[10,25,50,100,150,200,300,400,500];
+const VAN=[
+ {id:'v1',n:'Lieferwagen',d:'Kleingeld zur Sparkasse',b:20,r:0.8},
+ {id:'v2',n:'Geldtransporter',d:'Gepanzert, Touren zu Filialen',b:300,r:5},
+ {id:'v3',n:'Panzerwagen-Kolonne',d:'Versorgt Landeszentralbanken',b:4000,r:40},
+ {id:'v4',n:'Werttransport-LKW',d:'Großmengen für Geschäftsbanken',b:60000,r:300},
+ {id:'v5',n:'Güterzug',d:'Bundesweite Belieferung',b:1e6,r:2200},
+ {id:'v6',n:'Frachtflugzeug',d:'Euroraum-Lieferungen',b:2e7,r:18000},
+ {id:'v7',n:'Hubschrauber-Staffel',d:'Eilaufträge in Echtzeit',b:4e8,r:150000},
+ {id:'v8',n:'Logistikzentrum',d:'Vollautomatische Verteilung',b:8e9,r:1.2e6}];
+const TECH=[
+ {id:'t1',n:'Hydraulische Prägepresse',d:'Münzhalle ×2',c:500,k:'coin',m:2},
+ {id:'t2',n:'Routenplanung',d:'Auslieferung ×2',c:2500,k:'del',m:2},
+ {id:'t3',n:'Rohling-Stanzautomat',d:'Münzhalle ×2',c:5e4,k:'coin',m:2},
+ {id:'t4',n:'Bimetall-Fügelinie',d:'Münzhalle ×2',c:5e5,k:'coin',m:2},
+ {id:'t5',n:'Bogen-Offsetdruck',d:'Druckhalle ×2',c:5e6,k:'note',m:2},
+ {id:'t6',n:'GPS-Flottensteuerung',d:'Auslieferung ×2',c:3e7,k:'del',m:2},
+ {id:'t7',n:'Stichtiefdruck',d:'Druckhalle ×2',c:1e8,k:'note',m:2},
+ {id:'t8',n:'Robotik-Sortierung',d:'Ganzes Werk ×1,5',c:5e8,k:'all',m:1.5},
+ {id:'t9',n:'Express-Logistik',d:'Auslieferung ×3',c:3e9,k:'del',m:3},
+ {id:'t10',n:'Hochgeschwindigkeits-Zählung',d:'Ganzes Werk ×2',c:1e10,k:'all',m:2},
+ {id:'t11',n:'KI-Qualitätskontrolle',d:'Ganzes Werk ×2',c:1e11,k:'all',m:2},
+ {id:'t12',n:'Neues Druckzentrum',d:'Druckhalle ×3',c:1e12,k:'note',m:3}];
+const FEAT=[
+ {id:'f1',n:'Randprägung',d:'Münzrand mit Rillen',c:150,red:3},
+ {id:'f2',n:'Wasserzeichen',d:'Im Gegenlicht sichtbar',c:3000,red:4},
+ {id:'f3',n:'Sicherheitsfaden',d:'Dunkler Streifen im Papier',c:25000,red:4},
+ {id:'f4',n:'Mikroschrift',d:'Nur mit Lupe lesbar',c:2e5,red:3},
+ {id:'f5',n:'Fühlbares Relief',d:'Tastbarer Druck am Rand',c:2e6,red:3},
+ {id:'f6',n:'Hologramm-Streifen',d:'Bild wechselt beim Kippen',c:2e7,red:4},
+ {id:'f7',n:'Smaragd-Zahl',d:'Farbwechsel grün zu blau',c:2e8,red:3},
+ {id:'f8',n:'Porträt-Fenster',d:'Durchsichtiges Fenster',c:2e9,red:3},
+ {id:'f9',n:'UV-Fluoreszenz',d:'Leuchtet unter UV-Licht',c:2e10,red:2}];
+const GUARD=[
+ {id:'g1',n:'Wachposten',d:'Schutz +5',b:100,v:5},
+ {id:'g2',n:'Überwachungskamera',d:'Schutz +12',b:800,v:12},
+ {id:'g3',n:'Stahltor',d:'Schutz +40',b:8000,v:40},
+ {id:'g4',n:'Alarmanlage',d:'Schutz +110',b:6e4,v:110},
+ {id:'g5',n:'Hochsicherheitstresor',d:'Schutz +350, senkt Beuteverlust',b:5e5,v:350},
+ {id:'g6',n:'Polizeiwache vor Ort',d:'Schutz +1.200',b:5e6,v:1200},
+ {id:'g7',n:'SEK-Bereitschaft',d:'Schutz +4.500',b:5e7,v:4500},
+ {id:'g8',n:'Bundeswehr-Objektschutz',d:'Schutz +18.000',b:4e8,v:18000},
+ {id:'g9',n:'Drohnenabwehr',d:'Schutz +70.000',b:4e9,v:70000},
+ {id:'g10',n:'Satellitenüberwachung',d:'Schutz +300.000',b:5e10,v:300000}];
+const GANGS=[{n:'Kleinganoven',m:.6},{n:'eine Räuberbande',m:1},{n:'eine Profi-Crew',m:1.6},{n:'ein Hackerkollektiv',m:2.2}];
+const R=1.15,KEY='bbidle2';
+const blank=()=>({cash:25,stock:0,lv:0,total:0,life:0,l:{c1:1},v:{v1:1},t:{},f:{},g:{},rep:0,next:90,warn:0,gang:0,won:0,lost:0,log:[],ts:Date.now()});
+let S=blank(),view='werk',hall='coin',amt='1',confirmReset=false;
+try{const x=JSON.parse(localStorage.getItem(KEY));if(x)S=Object.assign(blank(),x)}catch(e){}
+const $=id=>document.getElementById(id);
+const U=['',' Tsd.',' Mio.',' Mrd.',' Bio.',' Brd.',' Trio.',' Trd.'];
+function fmt(n){if(n<1000)return n.toLocaleString('de-DE',{maximumFractionDigits:n<10?2:0})+' €';let i=0;while(n>=1000&&i<U.length-1){n/=1000;i++}return n.toLocaleString('de-DE',{maximumFractionDigits:2})+U[i]+' €'}
+const num=n=>n<1e6?Math.round(n).toLocaleString('de-DE'):fmt(n).replace(' €','');
+const cnt=(o,id)=>o[id]||0;
+const tm=k=>TECH.filter(t=>S.t[t.id]&&t.k===k).reduce((a,t)=>a*t.m,1);
+const featN=()=>FEAT.filter(f=>S.f[f.id]).length;
+const cfPct=()=>Math.max(1,30-FEAT.filter(f=>S.f[f.id]).reduce((a,f)=>a+f.red,0));
+const repM=()=>1+0.1*S.rep;
+const msN=c=>MS.filter(m=>c>=m).length;
+const nextMs=c=>MS.find(m=>c<m);
+const baseMul=l=>tm(l.note?'note':'coin')*tm('all')*repM()*(1-cfPct()/100);
+const lineRate=l=>{const c=cnt(S.l,l.id);return l.r*c*Math.pow(2,msN(c))*baseMul(l)};
+const prod=()=>LINES.reduce((a,l)=>a+lineRate(l),0);
+const delM=()=>tm('del')*repM();
+const del=()=>VAN.reduce((a,v)=>a+v.r*cnt(S.v,v.id),0)*delM();
+const cap=()=>300*Math.pow(3,S.lv);
+const capCost=()=>150*Math.pow(4,S.lv);
+const income=()=>Math.min(prod(),del());
+const defense=()=>GUARD.reduce((a,g)=>a+g.v*cnt(S.g,g.id),0);
+const threat=m=>(m||1)*(8+4*Math.pow(income(),0.8));
+const risk=()=>{const t=threat(),d=defense();return t/(t+d)*100};
+const costN=(b,c,n)=>b*Math.pow(R,c)*(Math.pow(R,n)-1)/(R-1);
+function howMany(b,c){if(amt==='max'){const n=Math.floor(Math.log(S.cash*(R-1)/(b*Math.pow(R,c))+1)/Math.log(R));return Math.max(1,n)}return +amt}
+function log(t,c){S.log.unshift({t,c,time:new Date().toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'})});S.log=S.log.slice(0,40);if(view==='bank')drawLog()}
+function earn(v){S.cash+=v;S.total+=v;S.life+=v}
+function step(dt){S.stock=Math.min(cap(),S.stock+prod()*dt);const d=Math.min(S.stock,del()*dt);S.stock-=d;earn(d)}
+{const away=Math.min((Date.now()-S.ts)/1000,8*3600);if(away>30&&income()>0){const v=income()*away*0.5;earn(v);log('Während du weg warst, wurden '+fmt(v)+' ausgeliefert (50 %, max. 8 Std.).','good')}}
+
+const amtHTML=()=>`<div class="amt" id="amt">Kaufen: ${['1','10','max'].map(a=>`<button data-a="${a}" class="${amt===a?'on':''}">${a==='max'?'Max':'×'+a}</button>`).join('')}</div>`;
+function lineHTML(l){
+ const c=cnt(S.l,l.id),lk=l.req&&featN()<l.req;
+ if(!c)return `<div class="card empty"><div class="ch"><b>${l.n}</b><span>${fmt(l.r*baseMul(l))}/s je Maschine</span></div>
+  <div class="row"><small>${lk?'Gesperrt: benötigt '+l.req+' Sicherheitsmerkmale (du hast '+featN()+')':'Bauplatz frei · '+l.d}</small><button class="buy" data-k="l:${l.id}" id="b-${l.id}"></button></div></div>`;
+ const shown=Math.min(c,6),dur=Math.max(1.2,6-Math.log10(lineRate(l)+1)*0.9);
+ const machs=Array.from({length:shown},(_,i)=>`<i class="m${l.note?' pr':''}" style="--d:-${(i*.17).toFixed(2)}s"></i>`).join('')+(c>6?`<span class="more">+${c-6}</span>`:'');
+ const items=Array.from({length:4},(_,i)=>`<i class="it ${l.note?'bill':'coin'}" style="background:${l.col};--dur:${dur.toFixed(2)}s;--dl:-${(i*dur/4).toFixed(2)}s"></i>`).join('');
+ return `<div class="card"><div class="ch"><b>${l.n} <span id="n-${l.id}"></span></b><span id="r-${l.id}"></span></div>
+  <div class="belt"><div class="machs">${machs}</div><div class="conv">${items}</div><div class="bin"></div></div>
+  <div class="row"><div><small id="d-${l.id}"></small><div class="bar2 thin"><i id="p-${l.id}"></i></div></div><button class="buy" data-k="l:${l.id}" id="b-${l.id}"></button></div></div>`}
+function lagerHTML(){
+ return `<div class="card"><div class="ch"><b>Tresorlager</b><span id="lvT"></span></div>
+  <div class="bar2" id="lgB"><i></i></div>
+  <div class="row"><small id="capT"></small><button class="buy" data-k="s:lager" id="b-lager"></button></div></div>
+  <div class="card"><div class="ch"><b>Verladerampe</b><span id="dlT"></span></div>
+  <div class="dock" aria-hidden="true"><svg viewBox="0 0 84 40"><rect x="0" y="4" width="58" height="26" rx="4" fill="#3d4b4f"/><path d="M58 12h14l8 10v8H58z" fill="#55666b"/><rect x="62" y="14" width="9" height="7" fill="#bfe3ef"/><rect x="8" y="12" width="38" height="5" fill="#d4a826"/><circle cx="15" cy="32" r="6" fill="#1b2224"/><circle cx="66" cy="32" r="6" fill="#1b2224"/></svg></div>
+  <small class="sm">${VAN.filter(v=>cnt(S.v,v.id)).map(v=>v.n+' ×'+cnt(S.v,v.id)).join(' · ')}</small>
+  <div class="row"><small>Mehr Fahrzeuge gibt es im Fuhrpark.</small><button class="buy" data-go="deliv">Zum Fuhrpark</button></div></div>`}
+const listItem=(k,n,c)=>`<div class="card" id="i-${k}"><div class="row" style="margin:0"><div><b>${n}${c?` <span class="ch" style="display:inline"><span id="c-${k}"></span></span>`:''}</b><small id="d-${k}"></small></div><button class="buy" data-k="${k}" id="b-${k}"></button></div></div>`;
+function items(){
+ if(view==='deliv')return VAN.map(v=>({k:'v:'+v.id,n:v.n,c:cnt(S.v,v.id),d:v.d+' · '+fmt(v.r*delM())+'/s je Fahrzeug',multi:1,b:v.b}));
+ if(view==='tech')return TECH.map(t=>({k:'t:'+t.id,n:t.n,d:t.d,done:S.t[t.id],price:t.c}));
+ if(view==='feat')return FEAT.map(f=>({k:'f:'+f.id,n:f.n,d:f.d+' · Falschgeld −'+f.red+' %',done:S.f[f.id],price:f.c}));
+ if(view==='guard')return GUARD.map(g=>({k:'g:'+g.id,n:g.n,c:cnt(S.g,g.id),d:g.d,multi:1,b:g.b}));
+ return null}
+const HEAD={deliv:['Fuhrpark','Nur ausgeliefertes Geld landet in der Kasse.'],tech:['Technik','Einmalige Verbesserungen für Werk und Logistik.'],feat:['Sicherheitsmerkmale','Senken den Falschgeld-Verlust und schalten die Druckhalle frei.'],guard:['Schutz','Je reicher die Bank, desto stärker die Angreifer.']};
+function render(){
+ document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.v===view));
+ let h='';
+ if(view==='werk'){
+  const hc=LINES.filter(l=>!l.note).reduce((a,l)=>a+cnt(S.l,l.id),0),hn=LINES.filter(l=>l.note).reduce((a,l)=>a+cnt(S.l,l.id),0);
+  h=`<div class="seg" id="seg"><button data-h="coin" class="${hall==='coin'?'on':''}">Münzhalle<small>${hc} Pressen</small></button><button data-h="note" class="${hall==='note'?'on':''}">Druckhalle<small>${hn} Maschinen</small></button><button data-h="lager" class="${hall==='lager'?'on':''}">Lager<small>Stufe ${S.lv+1}</small></button></div>`;
+  h+=hall==='lager'?lagerHTML():amtHTML()+LINES.filter(l=>hall==='note'?l.note:!l.note).map(lineHTML).join('');
+  if(hall!=='lager')h+=`<p class="note">Bei 10, 25, 50, 100 … Maschinen verdoppelt sich die Produktion einer Linie.</p>`}
+ else if(view==='bank'){
+  const gain=Math.floor(Math.sqrt(S.total/1e9));
+  h=`<h2>Bank</h2><p class="lead">Reform, Statistik und Lagebericht.</p>
+  <div class="card"><b>Währungsreform</b><small class="sm">Setzt Werk, Fuhrpark, Technik, Merkmale und Schutz zurück. Jeder Reputationspunkt bringt dauerhaft +10 % auf Herstellung und Auslieferung. Ab 1 Mrd. € in dieser Runde.</small>
+  <div class="row"><small>Reputation ${S.rep} · Reform bringt <span id="gain">+${gain}</span></small><button class="buy ${confirmReset===true?'red':''}" id="pres" ${gain<1?'disabled':''}>${confirmReset===true?'Wirklich?':'Reform'}</button></div></div>
+  <div class="card"><b>Statistik</b><small class="sm">Insgesamt ausgeliefert: ${fmt(S.life)}<br>Diese Runde: ${fmt(S.total)}<br>Überfälle abgewehrt ${S.won} · verloren ${S.lost}<br>Falschgeld-Verlust ${cfPct()} %</small></div>
+  <div class="card"><b>Lagebericht</b><div class="log" id="log"></div></div>
+  <div class="card"><div class="row" style="margin:0"><div><b>Neu anfangen</b><small>Löscht den gesamten Spielstand.</small></div><button class="buy red" id="wipe">${confirmReset==='w'?'Sicher?':'Löschen'}</button></div></div>
+  <p class="note">Fan-Spiel ohne Verbindung zur Deutschen Bundesbank.</p>`}
+ else{
+  const it=items();h=`<h2>${HEAD[view][0]}</h2><p class="lead">${HEAD[view][1]}</p>`;
+  if(view==='guard')h+=`<div class="card"><div class="ch"><b>Überfallrisiko</b><span id="rk"></span></div><div class="bar2" id="rkB"><i></i></div><small class="sm" id="rkT"></small></div>`;
+  if(view==='deliv'||view==='guard')h+=amtHTML();
+  h+=it.map(i=>listItem(i.k,i.n,i.multi)).join('')}
+ $('view').innerHTML=h;if(view==='bank')drawLog();update()}
+function update(){
+ const p=prod(),d=del(),c=cap(),sp=S.stock/c*100,rk=risk();
+ $('cash').textContent=fmt(S.cash);$('inc').textContent='+'+fmt(income())+' pro Sekunde';
+ $('prod').textContent=fmt(p)+'/s';$('del').textContent=fmt(d)+'/s';
+ $('stockT').textContent=fmt(S.stock);$('stockP').textContent=Math.floor(sp)+' %';
+ $('stockB').firstElementChild.style.width=sp+'%';$('stockB').classList.toggle('hot',sp>95);
+ const hint=sp>95&&p>d?'Lager voll – mehr Fahrzeuge oder größeres Lager!':p>d*1.5?'Fuhrpark kommt nicht hinterher.':d>p*3?'Fahrzeuge warten – Werk ausbauen.':'';
+ $('hint').textContent=hint;$('hint').classList.toggle('on',!!hint);
+ $('shield').textContent=(S.warn>0?'Alarm · ':'Risiko ')+Math.round(rk)+' %';$('shield').classList.toggle('hot',rk>50||S.warn>0);
+ $('gdot').classList.toggle('on',rk>50||S.warn>0);
+ document.documentElement.style.setProperty('--sp',Math.max(2,9-Math.log10(d+1)*1.2)+'s');
+ if(view==='werk'){
+  if(hall==='lager'){const pr=capCost();$('b-lager').textContent='Ausbauen '+fmt(pr);$('b-lager').disabled=S.cash<pr;$('lvT').textContent='Stufe '+(S.lv+1);
+   $('capT').textContent=fmt(S.stock)+' von '+fmt(c)+' · nächste Stufe '+fmt(c*3);$('lgB').firstElementChild.style.width=sp+'%';$('lgB').classList.toggle('hot',sp>95);$('dlT').textContent=fmt(d)+'/s'}
+  else for(const l of LINES){const b=$('b-'+l.id);if(!b)continue;const c2=cnt(S.l,l.id),lk=l.req&&featN()<l.req,n=c2?howMany(l.b,c2):1,pr=costN(l.b,c2,n);
+   b.textContent=c2?'+'+n+' '+fmt(pr):'Bauen '+fmt(pr);b.disabled=!!lk||S.cash<pr;
+   if(c2){const nm=nextMs(c2),pm=MS[msN(c2)-1]||0;$('n-'+l.id).textContent='×'+c2;$('r-'+l.id).textContent=fmt(lineRate(l))+'/s';
+    $('d-'+l.id).textContent=nm?'Bonus ×2 bei '+nm+' ('+c2+'/'+nm+')':'Alle Boni erreicht';$('p-'+l.id).style.width=nm?((c2-pm)/(nm-pm)*100)+'%':'100%'}}
+  return}
+ if(view==='bank'){const g=$('gain');if(g)g.textContent='+'+Math.floor(Math.sqrt(S.total/1e9));return}
+ if(view==='guard'){const df=defense(),th=threat();$('rk').textContent=Math.round(rk)+' %';$('rkB').firstElementChild.style.width=rk+'%';$('rkB').classList.toggle('hot',rk>50);
+  $('rkT').textContent='Schutz '+num(df)+' gegen Bedrohung '+num(th)+' · '+(S.warn>0?'Überfall läuft!':'nächste Bedrohung in ca. '+Math.ceil(S.next)+' s')+' · abgewehrt '+S.won+', verloren '+S.lost}
+ for(const i of items()){const b=$('b-'+i.k);if(!b)continue;$('d-'+i.k).textContent=i.d;
+  if(i.multi){const n=howMany(i.b,i.c),pr=costN(i.b,i.c,n);b.textContent=(n>1?n+'× ':'')+fmt(pr);b.disabled=S.cash<pr;$('c-'+i.k).textContent='×'+i.c}
+  else{b.textContent=i.done?'Aktiv':fmt(i.price);b.disabled=!!i.done||S.cash<i.price}
+  $('i-'+i.k).classList.toggle('done',!!i.done)}}
+function buy(k){
+ const[t,id]=k.split(':');
+ if(t==='s'){const pr=capCost();if(S.cash<pr)return;S.cash-=pr;S.lv++;log('Tresorlager ausgebaut auf '+fmt(cap())+'.','good')}
+ else if(t==='l'||t==='g'||t==='v'){const src={l:LINES,g:GUARD,v:VAN}[t],o=S[t],x=src.find(z=>z.id===id);if(x.req&&featN()<x.req)return;
+  const c=cnt(o,id),n=c||t!=='l'?howMany(x.b,c):1,pr=costN(x.b,c,n);if(S.cash<pr)return;S.cash-=pr;o[id]=c+n;
+  if(c===0)log({l:'Neue Fertigungslinie gebaut: ',g:'Neuer Schutz: ',v:'Neues Fahrzeug: '}[t]+x.n,'good');
+  if(t==='l'&&msN(c+n)>msN(c))log(x.n+': Meilenstein erreicht, Produktion ×2!','good');
+  if(t==='l'){render();return}}
+ else{const src=t==='t'?TECH:FEAT,o=S[t],x=src.find(z=>z.id===id);if(o[id]||S.cash<x.c)return;S.cash-=x.c;o[id]=1;
+  log((t==='t'?'Technik eingeführt: ':'Sicherheitsmerkmal eingeführt: ')+x.n,'good')}
+ update()}
+document.addEventListener('click',e=>{
+ const go=e.target.closest('[data-go]');if(go){view=go.dataset.go;confirmReset=false;render();window.scrollTo(0,0);return}
+ const nv=e.target.closest('#nav button');if(nv){view=nv.dataset.v;confirmReset=false;render();window.scrollTo(0,0);return}
+ const sg=e.target.closest('#seg button');if(sg){hall=sg.dataset.h;render();return}
+ const am=e.target.closest('#amt button');if(am){amt=am.dataset.a;render();return}
+ if(e.target.id==='pres'){if(confirmReset!==true){confirmReset=true;render();return}const g=Math.floor(Math.sqrt(S.total/1e9));if(g<1)return;
+  const keep={rep:S.rep+g,life:S.life,won:S.won,lost:S.lost,log:S.log};S=Object.assign(blank(),keep);confirmReset=false;log('Währungsreform! Reputation jetzt '+S.rep+'.','good');render();return}
+ if(e.target.id==='wipe'){if(confirmReset!=='w'){confirmReset='w';render();return}S=blank();confirmReset=false;render();return}
+ const b=e.target.closest('.buy');if(b&&b.dataset.k)buy(b.dataset.k)});
+function drawLog(){const el=$('log');if(el)el.innerHTML=S.log.length?S.log.map(l=>`<p class="${l.c||''}">${l.time} · ${l.t}</p>`).join(''):'<p>Noch keine Ereignisse.</p>'}
+
+function raidTick(dt){
+ if(S.warn>0){S.warn-=dt;const g=GANGS[S.gang];$('alarmT').textContent='Alarm! '+g.n[0].toUpperCase()+g.n.slice(1)+' greift in '+Math.max(0,Math.ceil(S.warn))+' s an.';$('alarm').classList.add('on');
+  if(S.warn<=0){$('alarm').classList.remove('on');const th=threat(g.m),d=defense(),p=th/(th+d);
+   if(Math.random()<p){const vault=cnt(S.g,'g5'),frac=(0.1+Math.random()*0.15)/(1+0.15*vault),lc=S.cash*frac,ls=S.stock*frac;S.cash-=lc;S.stock-=ls;S.lost++;log('Überfall! '+g.n[0].toUpperCase()+g.n.slice(1)+' erbeutet '+fmt(lc+ls)+' aus Kasse und Lager.','bad')}
+   else{const rew=income()*30+20;earn(rew);S.won++;log('Überfall abgewehrt! Belohnung: '+fmt(rew)+'.','good')}
+   S.next=70+Math.random()*80}
+  return}
+ S.next-=dt;if(S.next<=0){const lvl=Math.min(GANGS.length-1,Math.floor(Math.log10(Math.max(1,income()))/2));S.gang=Math.floor(Math.random()*(lvl+1));if(Math.random()<.25)S.gang=Math.min(GANGS.length-1,S.gang+1);S.warn=12;log('Verdächtige Bewegung vor dem Tor: '+GANGS[S.gang].n+'.','bad')}}
+
+let last=performance.now(),acc=0;
+function loop(now){const dt=Math.min(1,(now-last)/1000);last=now;step(dt);raidTick(dt);acc+=dt;if(acc>.25){acc=0;update()}requestAnimationFrame(loop)}
+function save(){S.ts=Date.now();try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+setInterval(save,5000);document.addEventListener('visibilitychange',()=>{if(document.hidden)save();else{const away=Math.min((Date.now()-S.ts)/1000,8*3600);if(away>10&&income()>0){const v=income()*away*0.5;earn(v);log('Während du weg warst, wurden '+fmt(v)+' ausgeliefert.','good')}S.ts=Date.now();last=performance.now()}});
+window.addEventListener('pagehide',save);
+render();requestAnimationFrame(loop);
+}
+</script>
+</body>
+</html>
