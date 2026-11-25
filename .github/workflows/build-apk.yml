@@ -5,33 +5,72 @@ on:
   workflow_dispatch:
 permissions:
   contents: write
+
 jobs:
-  build:
-    runs-on: ubuntu-latest
+  export:
+    name: Godot-Export Android
+    runs-on: ubuntu-24.04
+    container:
+      image: barichello/godot-ci:4.3
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
-      - uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '8.7'
-      - name: 3D-Bibliothek einbinden (offline nutzbar)
+      - name: Godot vorbereiten
         run: |
-          curl -fsSL -o app/src/main/assets/three.min.js https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js
-          sed -i 's#https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js#three.min.js#' app/src/main/assets/index.html
-      - name: APK bauen
-        run: gradle assembleDebug --no-daemon
-      - name: APK umbenennen
-        run: cp app/build/outputs/apk/debug/app-debug.apk BundesbankIdle.apk
+          mkdir -v -p ~/.local/share/godot/export_templates/ ~/.config/
+          mv /root/.config/godot ~/.config/godot
+          mv /root/.local/share/godot/export_templates/4.3.stable ~/.local/share/godot/export_templates/4.3.stable
+      - name: Versionsnummer setzen
+        run: |
+          CODE=$((1000 + GITHUB_RUN_NUMBER))
+          NAME="3.0.${GITHUB_RUN_NUMBER}"
+          sed -i "s/^version\/code=.*/version\/code=$CODE/; s/^version\/name=.*/version\/name=\"$NAME\"/" godot/export_presets.cfg
+          sed -i "s/^config\/version=.*/config\/version=\"$NAME\"/" godot/project.godot
+          echo "Version $NAME ($CODE)"
+      - name: APK exportieren
+        run: |
+          export GODOT_ANDROID_KEYSTORE_RELEASE_PATH="$GITHUB_WORKSPACE/keys/app.keystore"
+          export GODOT_ANDROID_KEYSTORE_RELEASE_USER=androiddebugkey
+          export GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD=android
+          mkdir -p "$GITHUB_WORKSPACE/build"
+          cd godot
+          godot --headless --import > "$GITHUB_WORKSPACE/build/import.log" 2>&1 || true
+          godot --headless --verbose --export-release "Android" "$GITHUB_WORKSPACE/build/BundesbankIdle.apk" > "$GITHUB_WORKSPACE/build/export.log" 2>&1 || true
+          tail -n 60 "$GITHUB_WORKSPACE/build/export.log"
+          test -f "$GITHUB_WORKSPACE/build/BundesbankIdle.apk"
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
-          name: BundesbankIdle-APK
-          path: BundesbankIdle.apk
+          name: build
+          path: build/
+
+  publish:
+    name: Veröffentlichen
+    needs: export
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: build
+          path: build
+      - name: Bau-Protokoll in Branch ci-log ablegen
+        run: |
+          mkdir logrepo && cd logrepo
+          git init -q && git checkout -q -b ci-log
+          echo "run=${{ github.run_number }} result=${{ needs.export.result }} sha=${{ github.sha }}" > status.txt
+          for f in export.log import.log; do
+            if [ -f "../build/$f" ]; then tail -c 150000 "../build/$f" > "$f"; else echo "fehlt" > "$f"; fi
+          done
+          ls -la ../build >> status.txt 2>&1 || true
+          git add -A
+          git -c user.name=ci -c user.email=ci@example.com commit -qm "CI ${{ github.run_number }}"
+          git push -q -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}" ci-log
       - name: Release veröffentlichen
+        if: needs.export.result == 'success'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v2.4.${{ github.run_number }}
-          name: Bundesbank Idle v2.4.${{ github.run_number }}
-          files: BundesbankIdle.apk
+          tag_name: v3.0.${{ github.run_number }}
+          name: Bundesbank Idle v3.0.${{ github.run_number }}
+          files: build/BundesbankIdle.apk
+          make_latest: true
