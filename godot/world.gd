@@ -137,14 +137,14 @@ func C(r1: float, r2: float, h: float, c: String, x: float, y: float, z: float, 
 	(p if p != null else self).add_child(mi)
 	return mi
 
-func sphere(r: float, c: String, x: float, y: float, z: float, p: Node3D) -> MeshInstance3D:
-	var key := "s%.3f" % r
+func sphere(r: float, c: String, x: float, y: float, z: float, p: Node3D, seg := 10) -> MeshInstance3D:
+	var key := "s%.3f|%d" % [r, seg]
 	if not meshes.has(key):
 		var sm := SphereMesh.new()
 		sm.radius = r
 		sm.height = r * 2.0
-		sm.radial_segments = 10
-		sm.rings = 6
+		sm.radial_segments = seg
+		sm.rings = 6 if seg >= 10 else 4
 		meshes[key] = sm
 	var mi := MeshInstance3D.new()
 	mi.mesh = meshes[key]
@@ -354,7 +354,7 @@ func workbench(x: float, z: float, p: Node3D = null) -> void:
 ## Sozialtrakt hinter jeder Halle: Meisterbüro, Pausenecke, Spinde, Werkbank, Lager
 func annex(cx: float, note: bool) -> void:
 	var z0 := -14.3
-	var wall := "#3d6fb0" if note else "#c8553a"
+	var wall := "#3d6fb0" if note else "#a8503a"
 	B(14, 0.14, 2.4, "#d9d4c8", cx, 0.12, z0)
 	B(14, 1.6, 0.25, "#eef0ec", cx, 0.9, z0 - 1.15)
 	B(14.1, 0.18, 0.3, wall, cx, 1.75, z0 - 1.15)
@@ -450,6 +450,43 @@ func tree_free(x: float, z: float) -> bool:
 			return false
 	return true
 
+## Laubbaum: Stamm, Äste und mehrere Blattballen in unterschiedlichen Grüntönen
+func leaf_tree(x: float, z: float, s: float, n: int) -> void:
+	var th := 1.3 * s
+	C(0.12 * s, 0.2 * s, th, "#5b4330", x, th / 2.0, z, null, 7)
+	C(0.05 * s, 0.08 * s, 0.9 * s, "#5b4330", x + 0.25 * s, th + 0.2 * s, z, null, 5)
+	C(0.05 * s, 0.08 * s, 0.9 * s, "#5b4330", x - 0.2 * s, th + 0.25 * s, z + 0.15 * s, null, 5)
+	var greens := ["#3f6b2a", "#4a7a30", "#365f25", "#57863a"]
+	var off := [[0.0, 1.0, 0.0, 1.0], [0.55, 0.75, 0.2, 0.75], [-0.5, 0.8, -0.25, 0.8], [0.1, 0.7, 0.55, 0.7], [-0.15, 1.55, -0.1, 0.7], [0.3, 1.3, -0.5, 0.6]]
+	for i in off.size():
+		var o: Array = off[i]
+		sphere(float(o[3]) * s * 1.25, greens[(i + n) % 4], x + float(o[0]) * s, th + float(o[1]) * s, z + float(o[2]) * s, self, 8)
+
+## Nadelbaum (Fichte): schlanker Stamm, gestufte Kegel
+func conifer(x: float, z: float, s: float) -> void:
+	C(0.09 * s, 0.14 * s, 0.9 * s, "#4e3a2a", x, 0.45 * s, z, null, 6)
+	var lv := [[1.25, 1.5, 1.2], [1.0, 1.35, 2.1], [0.75, 1.15, 2.9], [0.45, 0.9, 3.6]]
+	for i in lv.size():
+		var l: Array = lv[i]
+		C(0.02, float(l[0]) * s, float(l[1]) * s, "#24472a" if i % 2 == 0 else "#2b5230", x, float(l[2]) * s, z, null, 7)
+
+## Birke: weißer Stamm mit dunklen Flecken, hellgrüne, lichte Krone
+func birch(x: float, z: float, s: float) -> void:
+	var th := 2.2 * s
+	C(0.07 * s, 0.11 * s, th, "#e6e2d6", x, th / 2.0, z, null, 7)
+	for k in 4:
+		B(0.16 * s, 0.05 * s, 0.05, "#2e2b28", x + 0.02, 0.4 * s + k * 0.45 * s, z + 0.09 * s)
+	sphere(0.6 * s, "#7a9e45", x, th + 0.2 * s, z, self, 8)
+	sphere(0.45 * s, "#6b9140", x + 0.35 * s, th - 0.2 * s, z + 0.1 * s, self, 8)
+	sphere(0.42 * s, "#86a84e", x - 0.3 * s, th - 0.05 * s, z - 0.2 * s, self, 8)
+
+## Busch aus zwei, drei Ballen
+func bush(x: float, z: float, n: int) -> void:
+	var c := ["#3d6a2c", "#47752f", "#35602a"]
+	sphere(0.5, c[n % 3], x, 0.35, z, self, 8)
+	sphere(0.4, c[(n + 1) % 3], x + 0.45, 0.28, z + 0.15, self, 8)
+	sphere(0.35, c[(n + 2) % 3], x - 0.3, 0.25, z + 0.3, self, 8)
+
 ## Straße mit Mittelstreifen
 func road(x1: float, z1: float, x2: float, z2: float, p: Node3D = null) -> void:
 	var horiz: bool = abs(x2 - x1) >= abs(z2 - z1)
@@ -457,11 +494,15 @@ func road(x1: float, z1: float, x2: float, z2: float, p: Node3D = null) -> void:
 	var cx := (x1 + x2) / 2.0
 	var cz := (z1 + z2) / 2.0
 	if horiz:
-		B(L + 3.0, 0.06, 3.0, "#4a5154", cx, 0.1, cz, p)
+		B(L + 3.0, 0.08, 0.9, "#8d8f8a", cx, 0.07, cz - 1.95, p)
+		B(L + 3.0, 0.08, 0.9, "#8d8f8a", cx, 0.07, cz + 1.95, p)
+		B(L + 3.0, 0.06, 3.0, "#3e4447", cx, 0.1, cz, p)
 		B(L + 3.0, 0.065, 0.12, "#c9cdd0", cx, 0.105, cz - 1.42, p)
 		B(L + 3.0, 0.065, 0.12, "#c9cdd0", cx, 0.105, cz + 1.42, p)
 	else:
-		B(3.0, 0.06, L + 3.0, "#4a5154", cx, 0.1, cz, p)
+		B(0.9, 0.08, L + 3.0, "#8d8f8a", cx - 1.95, 0.07, cz, p)
+		B(0.9, 0.08, L + 3.0, "#8d8f8a", cx + 1.95, 0.07, cz, p)
+		B(3.0, 0.06, L + 3.0, "#3e4447", cx, 0.1, cz, p)
 		B(0.12, 0.065, L + 3.0, "#c9cdd0", cx - 1.42, 0.105, cz, p)
 		B(0.12, 0.065, L + 3.0, "#c9cdd0", cx + 1.42, 0.105, cz, p)
 	var k := 1.0
@@ -473,20 +514,20 @@ func road(x1: float, z1: float, x2: float, z2: float, p: Node3D = null) -> void:
 		k += 3.0
 
 func build_static() -> void:
-	B(320, 0.2, 320, "#2a6b26", 0, -0.1, 0)
+	B(320, 0.2, 320, "#3c5e27", 0, -0.1, 0)
 	B(35, 0.1, 31, "#8e9a9e", 0, 0.05, 0)
 	# Münzhalle (warm)
-	B(14, 0.14, 14, "#e2b874", -8, 0.12, -6)
-	B(14, 0.5, 0.3, "#c8553a", -8, 0.35, -13)
-	B(0.3, 1.5, 14, "#c8553a", -15, 0.85, -6)
-	B(0.3, 0.5, 14, "#c8553a", -1, 0.35, -6)
-	B(14, 0.5, 0.3, "#c8553a", -8, 0.35, 1)
+	B(14, 0.14, 14, "#cdb68a", -8, 0.12, -6)
+	B(14, 0.5, 0.3, "#a8503a", -8, 0.35, -13)
+	B(0.3, 1.5, 14, "#a8503a", -15, 0.85, -6)
+	B(0.3, 0.5, 14, "#a8503a", -1, 0.35, -6)
+	B(14, 0.5, 0.3, "#a8503a", -8, 0.35, 1)
 	# Druckhalle (blau)
-	B(14, 0.14, 14, "#9fbde6", 8, 0.12, -6)
-	B(14, 0.5, 0.3, "#3d6fb0", 8, 0.35, -13)
-	B(0.3, 0.5, 14, "#3d6fb0", 1, 0.35, -6)
-	B(0.3, 0.5, 14, "#3d6fb0", 15, 0.35, -6)
-	B(14, 0.5, 0.3, "#3d6fb0", 8, 0.35, 1)
+	B(14, 0.14, 14, "#a8b6c4", 8, 0.12, -6)
+	B(14, 0.5, 0.3, "#41638f", 8, 0.35, -13)
+	B(0.3, 0.5, 14, "#41638f", 1, 0.35, -6)
+	B(0.3, 0.5, 14, "#41638f", 15, 0.35, -6)
+	B(14, 0.5, 0.3, "#41638f", 8, 0.35, 1)
 	# Tresor
 	B(10, 0.14, 8, "#c9b27a", -10, 0.12, 7)
 	# Hof, Rampe, Straße
@@ -504,7 +545,7 @@ func build_static() -> void:
 	road(21.0, 3.0, POL_X - 4.75, 3.0)
 	road(-22.0, -8.0, -27.5, -8.0)
 	road(-22.0, 5.0, -27.0, 5.0)
-	# Bäume um Straßen und Gebäude herum verteilt
+	# Natürliche Vegetation: Laubbäume, Nadelbäume, Birken und Büsche
 	var n := 0
 	var xg := -46.0
 	while xg <= 46.0:
@@ -513,11 +554,32 @@ func build_static() -> void:
 			var jx := xg + sin(xg * 1.7 + zg * 0.9) * 1.8
 			var jz := zg + cos(xg * 0.8 - zg * 1.3) * 1.8
 			if tree_free(jx, jz):
-				C(0.15, 0.2, 0.8, "#7a5532", jx, 0.4, jz, null, 6)
-				C(0.0, 1.0 + (n % 3) * 0.25, 2.3 + (n % 2) * 0.4, "#2e7d32" if n % 2 else "#3b8f3a", jx, 1.9, jz, null, 7)
+				var h := fposmod(sin(jx * 12.9898 + jz * 78.233) * 43758.5453, 1.0)
+				var sc := 0.85 + h * 0.4
+				if h < 0.45:
+					leaf_tree(jx, jz, sc, n)
+				elif h < 0.72:
+					conifer(jx, jz, sc)
+				elif h < 0.88:
+					birch(jx, jz, sc)
+				else:
+					bush(jx, jz, n)
+				if n % 3 == 0 and tree_free(jx + 1.6, jz + 1.1):
+					bush(jx + 1.6, jz + 1.1, n + 1)
 				n += 1
 			zg += 5.5
 		xg += 5.5
+	# Grünflächen mit Farbvariationen (Wiese, trockenere Stellen)
+	var gx := -60.0
+	while gx <= 60.0:
+		var gz := -60.0
+		while gz <= 45.0:
+			var hv := fposmod(sin(gx * 3.1 + gz * 7.7) * 9187.31, 1.0)
+			if hv > 0.55 and tree_free(gx, gz):
+				var gc: String = ["#395a24", "#42642a", "#3f6026", "#47662c"][int(hv * 37.0) % 4]
+				B(4.0 + hv * 3.0, 0.02, 3.5 + hv * 2.5, gc, gx, 0.005, gz)
+			gz += 6.0
+		gx += 6.0
 	lamp_mat = StandardMaterial3D.new()
 	lamp_mat.albedo_color = Color("#fff2c0")
 	lamp_mat.emission_enabled = true
@@ -1050,7 +1112,7 @@ func build_extras() -> void:
 		ml.position = Vector3(-31, 5.2, -8)
 		dyn.add_child(ml)
 	# Zweigwerke (in der Ferne)
-	var spots := {"mainz": [45, -28, "#c8553a"], "leipzig": [51, -7.5, "#0e8a7c"], "muenchen": [49, 6.5, "#3d6fb0"], "hamburg": [57, 24, "#8a5a9e"]}
+	var spots := {"mainz": [45, -28, "#a8503a"], "leipzig": [51, -7.5, "#0e8a7c"], "muenchen": [49, 6.5, "#3d6fb0"], "hamburg": [57, 24, "#8a5a9e"]}
 	var names := {"mainz": "Mainz", "leipzig": "Leipzig", "muenchen": "München", "hamburg": "Hamburg"}
 	for id in spots.keys():
 		if S["sites"].get(id, false):
