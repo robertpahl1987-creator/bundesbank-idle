@@ -293,7 +293,7 @@ func blank() -> Dictionary:
 	return {cash=25.0, stock=0.0, lv=0, total=0.0, life=0.0, l={"c1": 1}, v={"v1": 1}, t={}, f={}, g={"g1": 2},
 		rep=0, next=90.0, warn=0.0, gang=0, won=0, lost=0, log=[], ts=now(), mig1=1, orders=[], odone=0,
 		mgr={}, auto={}, sites={}, shred=0, gold=0, zins=2, fx=[], gt=0.0, ev_next=240.0, ev_cur="", daily_day=0, streak=0,
-		box_ts=0.0, ach={}, coins=[], fakes=0, gfx=2, rooms={}, staff={}, owed=0.0, payday=300.0, unpaid_until=0.0, paid_total=0.0, hunt_next=60.0, escort=0, museum=0, amb_next=300.0, comm_next=300.0}
+		box_ts=0.0, ach={}, coins=[], fakes=0, gfx=2, rooms={}, staff={}, owed=0.0, payday=300.0, unpaid_until=0.0, paid_total=0.0, hunt_next=60.0, escort=0, museum=0, amb_next=300.0, comm_next=300.0, fire=0, fire_t=0.0, fire_next=480.0, fires=0}
 
 func load_game() -> void:
 	S = blank()
@@ -500,6 +500,8 @@ func glob_m() -> float:
 
 func hall_m(note: bool) -> float:
 	var m := 1.0
+	if note and float(S.get("fire_t", 0.0)) > 0.0:
+		return 0.0
 	if note:
 		m *= (1.5 if has_d("mgr", "note") else 1.0) * (2.0 if has_d("sites", "muenchen") else 1.0) * fx_m("note")
 	else:
@@ -1609,6 +1611,7 @@ func render_list() -> void:
 		var d := lbl("", 23, C_MUT, false, true)
 		v.add_child(d)
 		refs["risk"] = {rate=rk, bar=bar, desc=d}
+		fire_card()
 	if view == "deliv" or view == "guard":
 		amount_row()
 	for it in list_items():
@@ -2158,6 +2161,7 @@ func extras_tick(dt: float) -> void:
 				S["unpaid_until"] = gt + 300.0
 				add_log("Zahltag: Löhne konnten nicht voll gezahlt werden! Die Belegschaft ist 5 Minuten unzufrieden.", "bad")
 		S["owed"] = 0.0
+	fire_tick(dt)
 	# Ereignisse
 	if S["ev_cur"] == "" and S["warn"] <= 0.0:
 		S["ev_next"] = float(S["ev_next"]) - dt
@@ -2622,6 +2626,13 @@ func buy_extra(k: String) -> void:
 				S["cash"] -= room_cost(id)
 				S["rooms"][id] = room(id) + 1
 				add_log("%s auf Stufe %d ausgebaut." % [room_title(id), room(id)], "good")
+		"fire":
+			if int(S["fire"]) < 5 and S["cash"] >= fire_cost():
+				S["cash"] -= fire_cost()
+				S["fire"] = int(S["fire"]) + 1
+				add_log("Feuerwehr ausgebaut: %s." % FIRE_NAMES[int(S["fire"])], "good")
+				if burning():
+					S["fire_t"] = min(float(S["fire_t"]), FIRE_TIME[int(S["fire"])])
 		"museum":
 			if int(S["museum"]) == 0 and int(S["rep"]) >= 1 and S["cash"] >= 1e6:
 				S["cash"] -= 1e6
@@ -2630,6 +2641,48 @@ func buy_extra(k: String) -> void:
 	world.dirty = true
 	save_game()
 	render()
+
+# ---------------------------------------------------------------- Feuerwehr und Brände
+const FIRE_NAMES := ["keine Feuerwache", "Löschgruppe", "Feuerwache mit Drehleiter", "Hauptwache mit Rüstwagen", "Berufsfeuerwehr", "Werkfeuerwehr rund um die Uhr"]
+const FIRE_TIME := [150.0, 70.0, 45.0, 28.0, 16.0, 8.0]
+
+func fire_cost() -> float:
+	return 2e5 * pow(7.0, float(S["fire"]))
+
+func burning() -> bool:
+	return float(S.get("fire_t", 0.0)) > 0.0
+
+func fire_tick(dt: float) -> void:
+	var lvl := int(S["fire"])
+	if burning():
+		S["fire_t"] = float(S["fire_t"]) - dt
+		if S["fire_t"] <= 0.0:
+			S["fire_t"] = 0.0
+			add_log("Brand in der Druckerei gelöscht – die Druckmaschinen laufen wieder." if lvl > 0 else "Das Feuer in der Druckerei ist endlich aus. Eine Feuerwache hätte viel schneller gelöscht.", "good")
+			world.dirty = true
+		return
+	if hall_machines(true) <= 0:
+		return
+	S["fire_next"] = float(S["fire_next"]) - dt
+	if S["fire_next"] <= 0.0:
+		S["fire_next"] = (360.0 + randf() * 420.0) * (1.0 + lvl * 0.35)
+		S["fire_t"] = FIRE_TIME[min(lvl, 5)]
+		S["fires"] = int(S["fires"]) + 1
+		var loss: float = 0.0
+		if lvl == 0:
+			loss = float(S["cash"]) * 0.03
+			S["cash"] -= loss
+		add_log("Brand in der Druckerei! Die Druckmaschinen stehen still. %s" % ("Die %s rückt aus." % FIRE_NAMES[lvl] if lvl > 0 else "Ohne Feuerwehr dauert das Löschen lange – Schaden: %s." % fmt(loss)), "bad")
+		world.dirty = true
+
+func fire_card() -> void:
+	var lvl := int(S["fire"])
+	var d := "Brände in der Druckerei legen die Scheinproduktion lahm. Jetzt: %s, Löschzeit ca. %d s." % [FIRE_NAMES[lvl], int(FIRE_TIME[lvl])]
+	if lvl < 5:
+		d += " Nächste Stufe: %s (Löschzeit %d s, seltener Brände)." % [FIRE_NAMES[lvl + 1], int(FIRE_TIME[lvl + 1])]
+	if burning():
+		d = "ES BRENNT in der Druckerei! Noch ca. %d s bis gelöscht. " % int(ceil(float(S["fire_t"]))) + d
+	extra_card("Feuerwehr Stufe %d/5" % lvl, d, "fire", "Voll" if lvl >= 5 else fmt(fire_cost()), S["cash"] >= fire_cost(), lvl >= 5)
 
 func room_title(id: String) -> String:
 	for r in ROOMS:

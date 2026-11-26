@@ -31,6 +31,7 @@ var dirty_auto := false
 func visual_sig() -> String:
 	var S: Dictionary = main.S
 	var parts := PackedStringArray()
+	parts.append("fw%d,%d" % [int(S.get("fire", 0)), int(main.burning())])
 	var fz: int = main.feat_n()
 	for l in main.LINES:
 		var c := cnt("l", l.id)
@@ -217,6 +218,9 @@ func person(col: String, p: Node3D, helmet := false, style := "") -> Node3D:
 	elif style == "manager":
 		pants = "#262b35"
 		top = "#2a2f3a"
+	elif style == "fire":
+		pants = "#1d2a3f"
+		top = "#22314a"
 	elif style == "robber":
 		pants = "#1e1e22"
 		top = "#2a2a2e"
@@ -261,6 +265,13 @@ func person(col: String, p: Node3D, helmet := false, style := "") -> Node3D:
 			sphere(0.13, hair, 0, 1.17, -0.025, g, 8)
 			B(0.1, 0.18, 0.01, "#f2f2f2", 0, 0.88, 0.148, g)
 			B(0.035, 0.17, 0.012, "#c8102e", 0, 0.86, 0.152, g)
+		"fire":
+			C(0.172, 0.172, 0.05, "#e6ec3a", 0, 0.85, 0, g, 8)
+			C(0.172, 0.165, 0.05, "#c9d2d5", 0, 0.7, 0, g, 8)
+			C(0.066, 0.066, 0.04, "#e6ec3a", -0.08, 0.15, 0, g, 6)
+			C(0.066, 0.066, 0.04, "#e6ec3a", 0.08, 0.15, 0, g, 6)
+			sphere(0.145, "#f2f2ee", 0, 1.18, 0, g, 8)
+			B(0.24, 0.1, 0.02, "#e6ec3a", 0, 1.2, 0.135, g)
 		"robber":
 			sphere(0.13, "#111111", 0, 1.135, 0, g, 8)
 			B(0.15, 0.04, 0.01, "#f1c9a5", 0, 1.15, 0.125, g)
@@ -448,7 +459,7 @@ const BLOCKED := [
 	[-19.0, 10.5, 84.0, 15.2],
 	[-19.0, -38.5, 19.0, -26.5],
 	[25.0, -4.0, 37.0, 9.5], [23.0, 13.5, 34.0, 19.0],
-	[-36.0, -12.0, -26.5, -3.0], [-33.0, 1.5, -25.5, 8.5],
+	[-36.0, -12.0, -26.5, -3.0], [-33.0, 1.5, -25.5, 8.5], [-38.0, 9.5, -25.0, 18.5],
 	[-60.0, 25.0, 90.0, 28.5],
 	[39.0, -36.0, 52.0, -20.0], [44.0, -14.0, 58.0, -1.0], [42.0, 2.0, 56.0, 11.0], [50.0, 15.0, 64.0, 33.0],
 ]
@@ -554,6 +565,7 @@ func build_static() -> void:
 	road(21.0, 3.0, POL_X - 4.75, 3.0)
 	road(-22.0, -8.0, -27.5, -8.0)
 	road(-22.0, 5.0, -27.0, 5.0)
+	road(-22.0, 14.0, -27.0, 14.0)
 	# Natürliche Vegetation: Laubbäume, Nadelbäume, Birken und Büsche
 	var n := 0
 	var xg := -46.0
@@ -782,6 +794,7 @@ func build() -> void:
 			oi += 1
 	build_extras()
 	build_security()
+	build_firebrigade()
 	build_fleet()
 	build_carts()
 	build_admin()
@@ -808,6 +821,8 @@ func build() -> void:
 			keep[c.n] = true
 	if anim.has("vdoor"):
 		keep[anim.vdoor] = true
+	if anim.has("fire_node"):
+		keep[anim.fire_node] = true
 	for d in anim.drones:
 		keep[d.d] = true
 	for k2 in ["train", "plane", "patrol", "fork"]:
@@ -1691,8 +1706,8 @@ func windshield(x: float, y: float, h: float, w: float, p: Node3D, lean := 0.25)
 ## Gepanzerter Werttransporter: Kurzhauber mit großem Kühlergrill, schräger Panzerscheibe,
 ## durchgehendem Panzeraufbau, Schießscharten, Lüftungsgittern und Rundumleuchte
 func armored(v: Node3D, L: float, big: bool) -> void:
-	var Y := "#e9b915"
-	var Yd := "#c99a0c"
+	var Y := "#4a5459" if big else "#e9b915"
+	var Yd := "#2f373b" if big else "#c99a0c"
 	var W := 1.08 if big else 0.98
 	var H := 1.35 if big else 1.2
 	var fx := L / 2.0
@@ -1736,6 +1751,8 @@ func armored(v: Node3D, L: float, big: bool) -> void:
 	var bx := cab_x - 0.7 - bl_len / 2.0
 	B(bl_len, H, W + 0.02, Y, bx, 0.36 + H / 2.0, 0, v)
 	B(bl_len + 0.7, 0.05, W + 0.03, Yd, bx + 0.35, 0.36 + H, 0, v)
+	if big:
+		B(bl_len + 0.7, 0.12, W + 0.04, "#e9b915", bx + 0.35, 0.36 + H * 0.3, 0, v)
 	for zz in [-1.0, 1.0]:
 		var zs: float = zz * (W / 2.0 + 0.015)
 		# Schießscharten und Lüftungsgitter
@@ -1761,6 +1778,273 @@ func armored(v: Node3D, L: float, big: bool) -> void:
 		wheel(ax, W / 2.0 - 0.05, r, v)
 		wheel(ax, -W / 2.0 + 0.05, r, v)
 
+# ---------------------------------------------------------------- Feuerwehr
+const FW_X := -31.5
+const FW_Z := 14.0
+
+## Feuerwehrfahrzeuge: lf = Löschfahrzeug, dlk = Drehleiter, rw = Rüstwagen, elw = Einsatzleitwagen
+func fire_truck(kind: String) -> Node3D:
+	var v := Node3D.new()
+	var R := "#c8141e"
+	if kind == "elw":
+		B(2.1, 0.1, 0.9, "#1b1f22", 0, 0.22, 0, v)
+		B(2.1, 0.45, 0.92, R, 0, 0.5, 0, v)
+		B(1.5, 0.48, 0.9, R, -0.25, 0.96, 0, v)
+		B(2.11, 0.1, 0.93, "#f2f2f2", 0, 0.62, 0, v)
+		windshield(0.55, 0.95, 0.4, 0.82, v, 0.45)
+		B(0.4, 0.26, 0.925, "#22323d", 0.2, 0.98, 0, v)
+		var bl := B(0.25, 0.07, 0.6, "#2f6bff", 0.15, 1.24, 0, v)
+		bl.material_override = police_light()
+		lights(1.05, -1.05, 0.55, 0.32, v)
+		for ww in [[0.65, 0.44], [-0.65, 0.44], [0.65, -0.44], [-0.65, -0.44]]:
+			wheel(ww[0], ww[1], 0.21, v)
+		return v
+	var L := 3.6 if kind == "dlk" else 3.2
+	var fx := L / 2.0
+	B(L - 0.2, 0.16, 0.8, "#1b1f22", 0, 0.38, 0, v)
+	# Fahrerhaus (Doppelkabine) mit großer Frontscheibe
+	B(1.1, 1.15, 1.1, R, fx - 0.55, 1.0, 0, v)
+	B(0.04, 0.5, 1.0, "#22323d", fx + 0.005, 1.25, 0, v)
+	for zz in [-0.56, 0.56]:
+		B(0.35, 0.35, 0.02, "#22323d", fx - 0.3, 1.25, zz, v)
+		B(0.35, 0.35, 0.02, "#22323d", fx - 0.8, 1.25, zz, v)
+		B(0.05, 0.3, 0.05, "#1b1f22", fx + 0.03, 1.3, zz * 1.18, v)
+	B(1.11, 0.1, 1.11, "#f2f2f2", fx - 0.55, 0.62, 0, v)
+	B(0.04, 0.3, 0.9, "#2b3033", fx + 0.01, 0.7, 0, v)
+	var bar := B(0.3, 0.09, 0.9, "#2f6bff", fx - 0.4, 1.62, 0, v)
+	bar.material_override = police_light()
+	B(0.06, 0.12, 1.12, "#2b3033", fx + 0.05, 0.42, 0, v)
+	# Aufbau mit silbernen Rollläden
+	var bl_len := L - 1.15
+	var bx := fx - 1.1 - bl_len / 2.0
+	B(bl_len, 1.2, 1.12, R, bx, 1.0, 0, v)
+	B(bl_len + 0.01, 0.1, 1.13, "#f2f2f2", bx, 0.62, 0, v)
+	for zz in [-0.565, 0.565]:
+		for k in 3:
+			B(bl_len / 3.0 - 0.08, 0.8, 0.012, "#b9c0c4", bx - bl_len / 3.0 + k * bl_len / 3.0, 1.05, zz, v)
+			for q in 4:
+				B(bl_len / 3.0 - 0.08, 0.015, 0.015, "#8e979b", bx - bl_len / 3.0 + k * bl_len / 3.0, 0.75 + q * 0.18, zz, v)
+	lights(fx, -fx, 0.62, 0.42, v)
+	match kind:
+		"dlk":
+			# Drehleiter: Drehkranz und eingefahrener Leiterpark über dem Fahrerhaus
+			C(0.3, 0.3, 0.15, "#3a4448", bx - 0.5, 1.68, 0, v, 10)
+			B(3.0, 0.18, 0.5, "#c9d2d5", bx + 0.6, 1.85, 0, v)
+			B(3.0, 0.06, 0.06, "#9aa3a8", bx + 0.6, 1.97, 0.22, v)
+			B(3.0, 0.06, 0.06, "#9aa3a8", bx + 0.6, 1.97, -0.22, v)
+			for k in 10:
+				B(0.03, 0.05, 0.44, "#9aa3a8", bx - 0.85 + k * 0.3, 1.97, 0, v)
+			B(0.4, 0.3, 0.55, "#c8141e", bx + 2.0, 1.85, 0, v)
+		"rw":
+			B(0.6, 0.3, 0.9, "#c9d2d5", bx, 1.75, 0, v)
+			var lm := B(0.2, 0.25, 0.6, "#fffbe0", bx - 0.6, 1.75, 0, v)
+			lm.material_override = mat("#fffbe0", 1.0, true)
+		_:
+			# Löschfahrzeug: Steckleiter und Saugschläuche auf dem Dach
+			B(bl_len - 0.2, 0.06, 0.4, "#c9d2d5", bx, 1.65, 0.2, v)
+			var hs := C(0.07, 0.07, bl_len - 0.3, "#2b3033", bx, 1.68, -0.3, v, 8)
+			hs.rotation.z = PI / 2
+	var r := 0.3
+	wheel(fx - 0.6, 0.48, r, v)
+	wheel(fx - 0.6, -0.48, r, v)
+	for ax in ([-fx + 0.5, -fx + 1.1] if kind == "dlk" else [-fx + 0.6]):
+		wheel(ax, 0.46, r, v, true)
+		wheel(ax, -0.46, r, v, true)
+	return v
+
+func build_firebrigade() -> void:
+	var S: Dictionary = main.S
+	var lvl := int(S.get("fire", 0))
+	if lvl > 0:
+		var gx := FW_X
+		var gz := FW_Z
+		var bays: int = min(1 + lvl, 4) if lvl < 5 else 5
+		B(11.0, 0.08, 8.0, "#8e9a9e", gx, 0.09, gz, dyn)
+		# Fahrzeughalle in Klinker mit roten Toren, Wachgebäude, Schlauchturm
+		var hw := bays * 1.6 + 0.4
+		var hz := gz - 0.4
+		B(4.2, 2.3, hw, "#9c4a35", gx - 2.4, 1.2, hz, dyn)
+		B(4.3, 0.15, hw + 0.1, "#6d6d6d", gx - 2.4, 2.4, hz, dyn)
+		for k in bays:
+			var zb := hz - hw / 2.0 + 1.0 + k * 1.6
+			B(0.05, 1.7, 1.3, "#22262a", gx - 0.27, 0.95, zb, dyn)
+			B(0.06, 0.25, 1.3, "#c8141e", gx - 0.26, 1.95, zb, dyn)
+			B(0.07, 0.02, 1.3, "#f2f2f2", gx - 0.25, 1.8, zb, dyn)
+		B(0.06, 0.35, hw * 0.7, "#f2f2f2", gx - 0.25, 2.25, hz, dyn)
+		# Wachgebäude mit Fenstern
+		B(3.0, 1.9 if lvl < 3 else 3.1, 2.6, "#e9e4d8", gx - 2.9, (1.9 if lvl < 3 else 3.1) / 2.0 + 0.1, hz + hw / 2.0 + 1.3, dyn)
+		for k in (1 if lvl < 3 else 2):
+			for q in 3:
+				B(0.05, 0.4, 0.5, "#2c3f4d", gx - 1.38, 0.9 + k * 1.2, hz + hw / 2.0 + 0.5 + q * 0.8, dyn)
+		if lvl >= 2:
+			B(1.1, 5.2, 1.1, "#9c4a35", gx - 4.4, 2.6, hz - hw / 2.0 - 0.3, dyn)
+			B(1.3, 0.3, 1.3, "#6d6d6d", gx - 4.4, 5.3, hz - hw / 2.0 - 0.3, dyn)
+			for q in 3:
+				B(0.05, 0.5, 0.3, "#2c3f4d", gx - 3.84, 1.2 + q * 1.4, hz - hw / 2.0 - 0.3, dyn)
+		# Fahnenmast, Schild
+		C(0.04, 0.04, 3.4, "#c9cdd0", gx + 4.6, 1.8, gz - 3.4, dyn, 6)
+		B(0.03, 0.55, 0.9, "#c8141e", gx + 4.6, 3.15, gz - 2.95, dyn)
+		B(0.08, 0.45, 2.6, "#c8141e", gx - 0.24, 2.7, hz, dyn)
+		var fl := Label3D.new()
+		fl.text = "FEUERWEHR"
+		fl.font_size = 72
+		fl.pixel_size = 0.011
+		fl.outline_size = 20
+		fl.outline_modulate = Color("#7a0a10")
+		fl.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		fl.no_depth_test = true
+		fl.position = Vector3(gx - 2.4, 4.6, hz)
+		dyn.add_child(fl)
+		# Fahrzeuge vor den Toren (außer bei einem Einsatz)
+		var kinds := ["lf", "dlk", "rw", "elw", "lf"]
+		for k in bays:
+			if main.burning() and k < 2:
+				continue
+			var tr := fire_truck(kinds[k])
+			tr.position = Vector3(gx + 1.6, 0.0, hz - hw / 2.0 + 1.0 + k * 1.6)
+			dyn.add_child(tr)
+			merge_deep(tr)
+		for k in min(lvl + 1, 5):
+			var fp := person("#22314a", dyn, false, "fire")
+			fp.position = Vector3(gx + 3.4 + (k % 2) * 0.6, 0.1, gz + 2.0 - k * 0.7)
+			fp.rotation.y = -PI / 2
+	# Brand in der Druckerei: Flammen, Rauch, Einsatzkräfte
+	anim["fire"] = []
+	if main.burning():
+		var fxn := Node3D.new()
+		dyn.add_child(fxn)
+		anim["fire_node"] = fxn
+		var flame := StandardMaterial3D.new()
+		flame.albedo_color = Color("#ff4a10")
+		flame.emission_enabled = true
+		flame.emission = Color("#ff5a00")
+		flame.emission_energy_multiplier = 2.0
+		var flame2 := StandardMaterial3D.new()
+		flame2.albedo_color = Color("#ffa020")
+		flame2.emission_enabled = true
+		flame2.emission = Color("#ff8a00")
+		flame2.emission_energy_multiplier = 2.0
+		var smoke := StandardMaterial3D.new()
+		smoke.albedo_color = Color(0.18, 0.18, 0.2, 0.55)
+		smoke.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		smoke.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		for spot in [[6.5, -9.0], [9.5, -5.5], [11.5, -10.5]]:
+			for k in 3:
+				var f := C(0.0, 0.45 - k * 0.1, 1.4 - k * 0.3, "#ff7a1a", spot[0] + (k - 1) * 0.35, 1.9 + (1.4 - k * 0.3) / 2.0, spot[1] + (k % 2) * 0.3, fxn, 7)
+				f.material_override = flame if k != 1 else flame2
+				anim.fire.append({m = f, ph = randf() * 6.0, kind = "flame", base = f.position.y})
+			for k in 4:
+				var sm := sphere(0.6, "#333333", spot[0], 3.0, spot[1], fxn, 8)
+				sm.material_override = smoke
+				sm.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+				anim.fire.append({m = sm, ph = float(k) / 4.0, kind = "smoke", x = spot[0], z = spot[1]})
+		if int(S.get("fire", 0)) > 0:
+			# Löschfahrzeug und Drehleiter im Hof, Wasserstrahl auf die Halle
+			var t1 := fire_truck("lf")
+			t1.position = Vector3(10.0, 0.0, 4.2)
+			dyn.add_child(t1)
+			merge_deep(t1)
+			if int(S["fire"]) >= 2:
+				var t2 := fire_truck("dlk")
+				t2.position = Vector3(5.0, 0.0, 4.2)
+				dyn.add_child(t2)
+				merge_deep(t2)
+			var water := StandardMaterial3D.new()
+			water.albedo_color = Color(0.6, 0.8, 1.0, 0.6)
+			water.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+			water.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+			for k in min(int(S["fire"]) + 1, 4):
+				var ff := person("#22314a", dyn, false, "fire")
+				var px: float = 6.5 + k * 1.6
+				ff.position = Vector3(px, 0.1, 2.4)
+				ff.rotation.y = PI
+				var jet := B(0.08, 0.08, 5.0, "#99ccff", px, 2.2, -1.2, fxn)
+				jet.rotation.x = -0.35
+				jet.material_override = water
+				anim.fire.append({m = jet, ph = randf() * 6.0, kind = "jet"})
+
+# ---------------------------------------------------------------- Bahn
+const RAIL_Z := 26.5
+
+## Gleis: Schotterbett, Betonschwellen, Schienen und Oberleitung; Güterzug mit E-Lok
+func build_railway() -> void:
+	var tr := Node3D.new()
+	dyn.add_child(tr)
+	var x0 := -60.0
+	var x1 := 110.0
+	var L := x1 - x0
+	var cx := (x0 + x1) / 2.0
+	B(L, 0.12, 2.6, "#7d776e", cx, 0.06, RAIL_Z, tr)
+	B(L, 0.12, 2.0, "#8f897f", cx, 0.17, RAIL_Z, tr)
+	var x := x0
+	while x < x1:
+		B(0.22, 0.08, 1.7, "#a7a59f", x, 0.27, RAIL_Z, tr)
+		x += 0.65
+	for zz in [-0.36, 0.36]:
+		B(L, 0.05, 0.12, "#5a5550", cx, 0.33, RAIL_Z + zz, tr)
+		B(L, 0.06, 0.07, "#9aa1a5", cx, 0.385, RAIL_Z + zz, tr)
+	# Oberleitungsmasten mit Ausleger und Fahrdraht
+	x = x0 + 5.0
+	while x < x1:
+		B(0.18, 3.4, 0.18, "#7f8a8f", x, 1.8, RAIL_Z - 1.6, tr)
+		B(0.08, 0.08, 1.75, "#7f8a8f", x, 3.35, RAIL_Z - 0.75, tr)
+		B(0.05, 0.25, 0.05, "#5a6266", x, 3.18, RAIL_Z, tr)
+		x += 12.0
+	B(L, 0.025, 0.025, "#2b3033", cx, 3.05, RAIL_Z, tr)
+	B(L, 0.02, 0.02, "#2b3033", cx, 3.3, RAIL_Z, tr)
+	merge_deep(tr)
+	# Bahnübergang an der Hauptstraße-Verlängerung nicht nötig: Zug fährt hinter dem Werk vorbei
+	var train := Node3D.new()
+	# E-Lok (vorne, Fahrtrichtung +x)
+	rail_bogie(1.2, train)
+	rail_bogie(-1.2, train)
+	B(4.2, 0.2, 1.3, "#2b3033", 0, 0.98, 0, train)
+	B(3.6, 1.35, 1.3, "#c8141e", 0, 1.75, 0, train)
+	B(0.5, 1.2, 1.3, "#c8141e", 1.95, 1.65, 0, train)
+	B(0.5, 1.2, 1.3, "#c8141e", -1.95, 1.65, 0, train)
+	var fw := B(0.06, 0.5, 1.1, "#22323d", 2.2, 2.0, 0, train)
+	fw.rotation.z = 0.25
+	var rw := B(0.06, 0.5, 1.1, "#22323d", -2.2, 2.0, 0, train)
+	rw.rotation.z = -0.25
+	B(3.6, 0.1, 1.32, "#f2f2f2", 0, 1.25, 0, train)
+	B(4.1, 0.12, 1.2, "#7f8a8f", 0, 2.5, 0, train)
+	for zz in [-0.66, 0.66]:
+		for k in 4:
+			B(0.5, 0.35, 0.02, "#5a6266", -1.1 + k * 0.7, 1.85, zz, train)
+	for sx in [2.21, -2.21]:
+		for zz in [-0.4, 0.4]:
+			var hl := B(0.03, 0.1, 0.14, "#fffbe0", sx, 1.25, zz, train)
+			hl.material_override = mat("#fffbe0", 1.0, true)
+	# Stromabnehmer
+	B(0.6, 0.06, 0.06, "#2b3033", 0.8, 2.75, 0, train)
+	var pa := B(0.05, 0.7, 0.05, "#2b3033", 0.8, 2.9, 0, train)
+	pa.rotation.z = 0.6
+	B(0.08, 0.04, 0.9, "#2b3033", 1.0, 3.05, 0, train)
+	# Güterwagen: gesicherte Wertcontainer
+	for j in range(4):
+		var wx := -4.7 - j * 4.6
+		rail_bogie(wx + 1.4, train)
+		rail_bogie(wx - 1.4, train)
+		B(4.3, 0.18, 1.2, "#2b3033", wx, 0.98, 0, train)
+		var cc: String = ["#6b7478", "#0e5a8a", "#6b7478", "#7a3b2e"][j]
+		B(4.0, 1.5, 1.3, cc, wx, 1.85, 0, train)
+		for k in 9:
+			B(0.03, 1.4, 1.32, "#4a5357", wx - 1.8 + k * 0.45, 1.85, 0, train)
+		B(0.05, 1.3, 0.02, "#e9b915", wx + 0.6, 1.85, 0.66, train)
+		B(0.05, 1.3, 0.02, "#e9b915", wx + 0.6, 1.85, -0.66, train)
+		B(0.35, 0.08, 0.08, "#2b3033", wx + 2.3, 0.98, 0, train)
+	train.position.z = RAIL_Z
+	dyn.add_child(train)
+	merge_deep(train)
+	anim.train = train
+
+func rail_bogie(x: float, p: Node3D) -> void:
+	B(1.4, 0.22, 1.0, "#2b3033", x, 0.72, 0, p)
+	for wx in [x - 0.45, x + 0.45]:
+		for zz in [-0.36, 0.36]:
+			var w := C(0.24, 0.24, 0.08, "#3a3f42", wx, 0.64, zz, p, 10)
+			w.rotation.x = PI / 2
+
 ## Realistische Fahrzeuge: Lieferwagen, Geldtransporter, Panzerwagen, LKW mit Kofferaufbau
 func vehicle(k: String, army := false) -> Node3D:
 	var v := Node3D.new()
@@ -1772,12 +2056,12 @@ func vehicle(k: String, army := false) -> Node3D:
 		"v1":
 			# kleiner weißer Kastenwagen
 			B(1.75, 0.08, 0.86, "#1b1f22", 0, 0.2, 0, v)
-			B(1.75, 0.42, 0.88, "#f2f4f5", 0, 0.45, 0, v)
-			B(1.3, 0.5, 0.86, "#f2f4f5", -0.2, 0.9, 0, v)
-			B(0.42, 0.18, 0.86, "#f2f4f5", 0.66, 0.72, 0, v)
+			B(1.75, 0.42, 0.88, "#2f6fb8", 0, 0.45, 0, v)
+			B(1.3, 0.5, 0.86, "#2f6fb8", -0.2, 0.9, 0, v)
+			B(0.42, 0.18, 0.86, "#2f6fb8", 0.66, 0.72, 0, v)
 			windshield(0.5, 0.92, 0.42, 0.8, v, 0.45)
 			B(0.36, 0.26, 0.885, "#22323d", 0.22, 0.92, 0, v)
-			B(1.0, 0.1, 0.89, "#0e8a7c", -0.35, 0.62, 0, v)
+			B(1.0, 0.1, 0.89, "#f2f4f5", -0.35, 0.62, 0, v)
 			B(0.05, 0.12, 0.6, "#2b3033", 0.88, 0.32, 0, v)
 			lights(0.875, -0.875, 0.5, 0.32, v)
 			for ww in [[0.55, 0.44], [-0.55, 0.44], [0.55, -0.44], [-0.55, -0.44]]:
@@ -1845,14 +2129,7 @@ func build_fleet() -> void:
 		dyn.add_child(tr)
 		anim.trucks.append({t = tr, u = float(j) / fleet.size()})
 	if cnt("v", "v5") > 0:
-		B(150, 0.08, 0.5, "#7a6a5a", 15, 0.1, 26.5, dyn)
-		B(150, 0.05, 1.6, "#9a8f80", 15, 0.06, 26.5, dyn)
-		var train := Node3D.new()
-		for j in range(4):
-			B(2.6, 1.2, 1, "#c8102e" if j > 0 else "#2f3739", j * -2.8, 0.8, 0, train)
-		train.position.z = 26.5
-		dyn.add_child(train)
-		anim.train = train
+		build_railway()
 	if cnt("v", "v6") > 0:
 		var pl := Node3D.new()
 		B(3, 0.5, 0.5, "#f4f5f2", 0, 0, 0, pl)
@@ -2188,10 +2465,26 @@ func _process(dt: float) -> void:
 		var a := along(fposmod(tr.u + t * dsp, 1.0))
 		tr.t.position = Vector3(a[0], 0, a[1])
 		tr.t.rotation.y = a[2]
+	for f in anim.get("fire", []):
+		if not is_instance_valid(f.m):
+			continue
+		match f.kind:
+			"flame":
+				var k := 1.0 + sin(t * 9.0 + f.ph) * 0.18 + sin(t * 15.0 + f.ph * 2.0) * 0.1
+				f.m.scale = Vector3(1.0 / sqrt(k), k, 1.0 / sqrt(k))
+				f.m.position.y = f.base + (k - 1.0) * 0.4
+			"smoke":
+				var u := fposmod(t * 0.18 + f.ph, 1.0)
+				f.m.position = Vector3(f.x + u * 2.0, 2.6 + u * 6.0, f.z - u * 1.0)
+				f.m.scale = Vector3.ONE * (0.6 + u * 2.2)
+			"jet":
+				f.m.scale.y = 1.0 + sin(t * 20.0 + f.ph) * 0.15
 	for d in anim.drones:
 		d.d.position = Vector3(cos(t * 0.4 + d.ph) * 12, 6 + sin(t * 2 + d.ph) * 0.3, sin(t * 0.4 + d.ph) * 10)
 	if anim.train:
-		anim.train.position.x = fposmod(t * 6.0, 90.0) - 40.0
+		anim.train.position.x = fposmod(t * 6.0, 150.0) - 50.0
+		if OS.has_environment("BB_TRAIN"):
+			anim.train.position.x = float(OS.get_environment("BB_TRAIN"))
 	if anim.plane:
 		var u := fposmod(t * 0.04, 1.0)
 		anim.plane.position = Vector3(-40 + u * 90, 12, -30 + u * 50)
