@@ -53,7 +53,7 @@ func visual_sig() -> String:
 	var tot := 0
 	for k in ["v1", "v2", "v3", "v4"]:
 		tot += cnt("v", k)
-	parts.append("fleet%d" % min(tot, 12))
+	parts.append("fleet%d,gold%d" % [min(tot, 12), int(int(S["gold"]) > 0)])
 	for k in ["v1", "v2", "v3", "v4"]:
 		parts.append(k + str(int(cnt("v", k) > 0)))
 	for k in ["v5", "v6", "v7", "v8"]:
@@ -417,6 +417,30 @@ func annex(cx: float, note: bool) -> void:
 	extinguisher(cx + 6.8, z0 - 0.85)
 
 ## Fußwege und Türen von der Hofseite in die Halle
+const HALL_A := [-13.0, -6.4]
+const HALL_B := [-5.6, 1.0]
+const LINE_Z := {"c1": -11.75, "c10": -9.65, "c50": -7.55, "e1": -3.9, "e2": -1.3, "s5": -11.0, "s20": -8.3, "s100": -3.9, "s200": -1.3}
+
+## Hallenboden mit niedrigen Wänden; Durchgänge zum Mittelgang
+func hall_box(cx: float, z0: float, z1: float, floor_c: String, wall: String) -> void:
+	var d := z1 - z0
+	var cz := (z0 + z1) / 2.0
+	B(14, 0.14, d, floor_c, cx, 0.12, cz)
+	B(14, 0.5, 0.3, wall, cx, 0.35, z0)
+	B(14, 0.5, 0.3, wall, cx, 0.35, z1)
+	B(0.3, 0.5, d, wall, cx - 7.0, 0.35, cz)
+	B(0.3, 0.5, d, wall, cx + 7.0, 0.35, cz)
+	# Tür zum Mittelgang
+	var zd := z1 if z1 < -6.0 else z0
+	B(1.4, 0.06, 0.34, "#9aa3a8", cx, 0.62, zd)
+	B(0.1, 0.5, 0.34, "#5a6163", cx - 0.72, 0.36, zd)
+	B(0.1, 0.5, 0.34, "#5a6163", cx + 0.72, 0.36, zd)
+	# gelbe Fußwege
+	B(0.08, 0.02, d - 0.4, "#ffd21a", cx - 6.65, 0.2, cz)
+	B(0.08, 0.02, d - 0.4, "#ffd21a", cx - 5.95, 0.2, cz)
+	B(13.4, 0.02, 0.08, "#ffd21a", cx, 0.2, z1 - 0.3)
+	B(13.4, 0.02, 0.08, "#ffd21a", cx, 0.2, z0 + 0.3)
+
 func hall_paths(cx: float, note: bool) -> void:
 	# Tür in der vorderen Hallenwand
 	B(1.4, 0.06, 0.32, "#9aa3a8", cx, 0.62, 1.0)
@@ -424,12 +448,6 @@ func hall_paths(cx: float, note: bool) -> void:
 	B(0.1, 0.5, 0.32, "#5a6163", cx + 0.72, 0.36, 1.0)
 	# Gehweg zum Hof
 	B(1.6, 0.05, 2.0, "#c9c3b5", cx, 0.12, 2.0)
-	# Fußgängerwege in der Halle (gelbe Linien)
-	var x0 := cx - 6.8
-	B(0.08, 0.02, 13.6, "#ffd21a", x0 + 0.15, 0.2, -6.0)
-	B(0.08, 0.02, 13.6, "#ffd21a", x0 + 0.85, 0.2, -6.0)
-	B(13.4, 0.02, 0.08, "#ffd21a", cx, 0.2, 0.35)
-	B(13.4, 0.02, 0.08, "#ffd21a", cx, 0.2, -12.4)
 	extinguisher(cx + 6.6, 0.6)
 	extinguisher(cx - 6.6, -12.5)
 
@@ -460,7 +478,7 @@ const BLOCKED := [
 	[-19.0, -38.5, 19.0, -26.5],
 	[25.0, -4.0, 37.0, 9.5], [23.0, 13.5, 34.0, 19.0],
 	[-36.0, -12.0, -26.5, -3.0], [-33.0, 1.5, -25.5, 8.5], [-38.0, 9.5, -25.0, 18.5],
-	[-60.0, 25.0, 90.0, 28.5],
+	[-60.0, 25.0, 90.0, 28.5], [7.0, 18.0, 13.0, 55.0], [-25.0, 18.0, -19.0, 55.0],
 	[39.0, -36.0, 52.0, -20.0], [44.0, -14.0, 58.0, -1.0], [42.0, 2.0, 56.0, 11.0], [50.0, 15.0, 64.0, 33.0],
 ]
 
@@ -536,18 +554,14 @@ func road(x1: float, z1: float, x2: float, z2: float, p: Node3D = null) -> void:
 func build_static() -> void:
 	B(320, 0.2, 320, "#3c5e27", 0, -0.1, 0)
 	B(35, 0.1, 31, "#8e9a9e", 0, 0.05, 0)
-	# Münzhalle (warm)
-	B(14, 0.14, 14, "#cdb68a", -8, 0.12, -6)
-	B(14, 0.5, 0.3, "#a8503a", -8, 0.35, -13)
-	B(0.3, 1.5, 14, "#a8503a", -15, 0.85, -6)
-	B(0.3, 0.5, 14, "#a8503a", -1, 0.35, -6)
-	B(14, 0.5, 0.3, "#a8503a", -8, 0.35, 1)
-	# Druckhalle (blau)
-	B(14, 0.14, 14, "#a8b6c4", 8, 0.12, -6)
-	B(14, 0.5, 0.3, "#41638f", 8, 0.35, -13)
-	B(0.3, 0.5, 14, "#41638f", 1, 0.35, -6)
-	B(0.3, 0.5, 14, "#41638f", 15, 0.35, -6)
-	B(14, 0.5, 0.3, "#41638f", 8, 0.35, 1)
+	# Vier Fertigungshallen: Cent, Euro-Münzen, Druckhalle 1 und 2 – getrennt durch einen Mittelgang
+	hall_box(-8.0, HALL_A[0], HALL_A[1], "#cdb68a", "#a8503a")
+	hall_box(-8.0, HALL_B[0], HALL_B[1], "#d3c29c", "#8f4632")
+	hall_box(8.0, HALL_A[0], HALL_A[1], "#a8b6c4", "#41638f")
+	hall_box(8.0, HALL_B[0], HALL_B[1], "#b3bfcb", "#35557c")
+	# Mittelgang mit Querweg zwischen den Hallen
+	B(30.0, 0.05, 0.8, "#c9c3b5", 0.0, 0.12, -6.0)
+	B(1.6, 0.05, 14.0, "#c9c3b5", 0.0, 0.12, -6.0)
 	# Tresor
 	B(10, 0.14, 8, "#c9b27a", -10, 0.12, 7)
 	# Hof, Rampe, Straße
@@ -566,6 +580,37 @@ func build_static() -> void:
 	road(-22.0, -8.0, -27.5, -8.0)
 	road(-22.0, 5.0, -27.0, 5.0)
 	road(-22.0, 14.0, -27.0, 14.0)
+	# Ausfahrten für mittlere und schwere Transporte (Süd), Abfahrten über die Bahn
+	road(2.0, 12.8, 2.0, RING_S)
+	road(10.0, 12.8, 10.0, RING_S)
+	road(10.0, RING_S, 10.0, 52.0)
+	road(-22.0, RING_S, -22.0, 52.0)
+	for ex in [["Ausfahrt leicht", 19.2, 10.6], ["Ausfahrt mittel", 2.0, 17.2], ["Ausfahrt schwer", 10.0, 17.2]]:
+		var el := Label3D.new()
+		el.text = ex[0]
+		el.font_size = 72
+		el.pixel_size = 0.011
+		el.outline_size = 16
+		el.outline_modulate = Color("#13262a")
+		el.modulate = Color("#ffc23d")
+		el.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		el.no_depth_test = true
+		el.position = Vector3(ex[1], 2.2, ex[2])
+		add_child(el)
+	# Schild der Bundesdruckerei an der Druckerei
+	for zz in [-8.6, -3.4]:
+		C(0.06, 0.06, 2.3, "#5a6163", 16.3, 1.2, zz, null, 6)
+	B(0.12, 1.0, 5.8, "#13336b", 16.3, 2.0, -6.0)
+	B(0.13, 0.08, 5.8, "#e9b915", 16.3, 1.48, -6.0)
+	var bd := Label3D.new()
+	bd.text = "BUNDESDRUCKEREI"
+	bd.font_size = 64
+	bd.pixel_size = 0.0085
+	bd.outline_size = 0
+	bd.modulate = Color("#ffffff")
+	bd.position = Vector3(16.37, 2.02, -6.0)
+	bd.rotation.y = PI / 2
+	add_child(bd)
 	# Natürliche Vegetation: Laubbäume, Nadelbäume, Birken und Büsche
 	var n := 0
 	var xg := -46.0
@@ -618,8 +663,10 @@ func build_static() -> void:
 	annex(8.0, true)
 	hall_paths(-8.0, false)
 	hall_paths(8.0, true)
-	label3d("Münzhalle", -8, 3.4, -14)
-	label3d("Druckhalle", 8, 3.4, -14)
+	label3d("Cent-Halle", -8, 3.0, -9.7)
+	label3d("Euro-Münzhalle", -8, 3.0, -2.3)
+	label3d("Druckhalle 1", 8, 3.0, -9.7)
+	label3d("Druckhalle 2", 8, 3.0, -2.3)
 	label3d("Tresor", -10, 4.4, 4.0)
 	label3d("Fuhrpark", 6, 2.4, 7.5)
 	for i in range(3):
@@ -656,7 +703,7 @@ func build() -> void:
 	for i in range(main.LINES.size()):
 		var l: Dictionary = main.LINES[i]
 		var note: bool = l.get("note", false)
-		var z: float = (-11.2 + (i - 5) * 3.2) if note else (-11.4 + i * 2.6)
+		var z: float = LINE_Z.get(l.id, -6.0)
 		var x0: float = 2.0 if note else -14.0
 		var L := 11.0
 		var c := cnt("l", l.id)
@@ -770,7 +817,7 @@ func build() -> void:
 		dyn.add_child(wg)
 		for j in range(wk):
 			var p := person("#3f6fb5" if note else "#ff7a1a", wg, true)
-			p.position = Vector3(x0 + 1.5 + j * 2.2, 0.2, z + 1.15)
+			p.position = Vector3(x0 + 1.5 + j * 2.2, 0.2, z + (1.0 if not note else 1.25))
 		merge_deep(wg)
 		anim.work.append({p = wg, x = 0.0, ph = randf() * 6.0})
 	# Tresorlager wächst mit der Stufe
@@ -1216,7 +1263,7 @@ func wall_tier() -> int:
 	return 0
 
 ## Mauer-Abschnitte (Start, Ende) rund ums Werk, mit Lücke für das Tor
-const WALL_SEGS := [[-17.6, -15.6, 17.6, -15.6], [-17.6, -15.6, -17.6, 15.6], [-17.6, 15.6, 17.6, 15.6], [17.6, -15.6, 17.6, 11.2], [17.6, 14.4, 17.6, 15.6]]
+const WALL_SEGS := [[-17.6, -15.6, 17.6, -15.6], [-17.6, -15.6, -17.6, 15.6], [-17.6, 15.6, 0.2, 15.6], [3.8, 15.6, 8.2, 15.6], [11.8, 15.6, 17.6, 15.6], [17.6, -15.6, 17.6, 11.2], [17.6, 14.4, 17.6, 15.6]]
 
 func wall_piece(x1: float, z1: float, x2: float, z2: float, h: float, th: float, col: String, y0 := 0.1) -> void:
 	var dx := x2 - x1
@@ -1270,6 +1317,13 @@ func build_wall(wt: int) -> void:
 	if wt >= 2:
 		B(0.6, 2.6, 0.6, "#8a8478", 17.6, 1.4, 10.9, dyn)
 		B(0.6, 2.6, 0.6, "#8a8478", 17.6, 1.4, 14.7, dyn)
+	# Ausfahrten Süd (mittel und schwer) mit Schranken
+	if wt >= 1:
+		for gx in [2.0, 10.0]:
+			for o in [-1.8, 1.8]:
+				B(0.5, 2.0 if wt >= 2 else 1.5, 0.5, "#8a8478", gx + o, 1.1, 15.6, dyn)
+			B(3.2, 0.08, 0.08, "#c8102e", gx, 1.0, 15.9, dyn)
+			B(0.3, 0.9, 0.3, "#e9e4d8", gx - 2.4, 0.55, 16.1, dyn)
 	# Wachtürme an den Ecken
 	if wt >= 3:
 		for c in [[-17.6, -15.6], [17.6, -15.6], [-17.6, 15.6], [17.6, 15.6]]:
@@ -1705,9 +1759,12 @@ func windshield(x: float, y: float, h: float, w: float, p: Node3D, lean := 0.25)
 
 ## Gepanzerter Werttransporter: Kurzhauber mit großem Kühlergrill, schräger Panzerscheibe,
 ## durchgehendem Panzeraufbau, Schießscharten, Lüftungsgittern und Rundumleuchte
-func armored(v: Node3D, L: float, big: bool) -> void:
+func armored(v: Node3D, L: float, big: bool, body_c := "", stripe_c := "#e9b915") -> void:
 	var Y := "#4a5459" if big else "#e9b915"
 	var Yd := "#2f373b" if big else "#c99a0c"
+	if body_c != "":
+		Y = body_c
+		Yd = Color(body_c).darkened(0.3).to_html(false)
 	var W := 1.08 if big else 0.98
 	var H := 1.35 if big else 1.2
 	var fx := L / 2.0
@@ -1752,7 +1809,7 @@ func armored(v: Node3D, L: float, big: bool) -> void:
 	B(bl_len, H, W + 0.02, Y, bx, 0.36 + H / 2.0, 0, v)
 	B(bl_len + 0.7, 0.05, W + 0.03, Yd, bx + 0.35, 0.36 + H, 0, v)
 	if big:
-		B(bl_len + 0.7, 0.12, W + 0.04, "#e9b915", bx + 0.35, 0.36 + H * 0.3, 0, v)
+		B(bl_len + 0.7, 0.12, W + 0.04, stripe_c, bx + 0.35, 0.36 + H * 0.3, 0, v)
 	for zz in [-1.0, 1.0]:
 		var zs: float = zz * (W / 2.0 + 0.015)
 		# Schießscharten und Lüftungsgitter
@@ -1928,7 +1985,7 @@ func build_firebrigade() -> void:
 		smoke.albedo_color = Color(0.18, 0.18, 0.2, 0.55)
 		smoke.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 		smoke.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-		for spot in [[6.5, -9.0], [9.5, -5.5], [11.5, -10.5]]:
+		for spot in [[5.5, -11.0], [9.5, -8.3], [12.0, -3.9]]:
 			for k in 3:
 				var f := C(0.0, 0.45 - k * 0.1, 1.4 - k * 0.3, "#ff7a1a", spot[0] + (k - 1) * 0.35, 1.9 + (1.4 - k * 0.3) / 2.0, spot[1] + (k % 2) * 0.3, fxn, 7)
 				f.material_override = flame if k != 1 else flame2
@@ -1992,8 +2049,16 @@ func build_railway() -> void:
 		x += 12.0
 	B(L, 0.025, 0.025, "#2b3033", cx, 3.05, RAIL_Z, tr)
 	B(L, 0.02, 0.02, "#2b3033", cx, 3.3, RAIL_Z, tr)
+	# Bahnübergänge der Ausfahrten mit Andreaskreuz
+	for cx2 in [10.0, -22.0]:
+		B(3.4, 0.06, 2.4, "#5f6466", cx2, 0.42, RAIL_Z, tr)
+		for sd in [-1.0, 1.0]:
+			C(0.04, 0.04, 1.6, "#e8ecee", cx2 + sd * 2.1, 0.8, RAIL_Z + sd * 2.0, tr, 6)
+			var xa := B(0.06, 0.06, 0.8, "#c8102e", cx2 + sd * 2.1, 1.5, RAIL_Z + sd * 2.0, tr)
+			xa.rotation.x = 0.8
+			var xb := B(0.06, 0.06, 0.8, "#e8ecee", cx2 + sd * 2.1, 1.5, RAIL_Z + sd * 2.0, tr)
+			xb.rotation.x = -0.8
 	merge_deep(tr)
-	# Bahnübergang an der Hauptstraße-Verlängerung nicht nötig: Zug fährt hinter dem Werk vorbei
 	var train := Node3D.new()
 	# E-Lok (vorne, Fahrtrichtung +x)
 	rail_bogie(1.2, train)
@@ -2127,7 +2192,18 @@ func build_fleet() -> void:
 			var esc := B(0.3, 0.14, 0.3, "#3a6fd8", 0.2, 1.42, 0, tr)
 			esc.material_override = mat("#3a6fd8", 1.0, true)
 		dyn.add_child(tr)
-		anim.trucks.append({t = tr, u = float(j) / fleet.size()})
+		var pid: String = {"v1": "light", "v2": "light", "v3": "mid", "v4": "heavy"}[k]
+		var u0 := float(j) / fleet.size()
+		anim.trucks.append({t = tr, u = u0, path = pid})
+		if k == "v3" or k == "v4":
+			heavy_escort(pid, u0)
+	if int(main.S["gold"]) > 0:
+		# Goldtransport: schwarzer Panzerwagen mit Goldstreifen, immer mit Polizei und SEK
+		var gt := Node3D.new()
+		armored(gt, 3.0, true, "#1f2326", "#d4a826")
+		dyn.add_child(gt)
+		anim.trucks.append({t = gt, u = 0.5, path = "heavy"})
+		heavy_escort("heavy", 0.5)
 	if cnt("v", "v5") > 0:
 		build_railway()
 	if cnt("v", "v6") > 0:
@@ -2151,6 +2227,19 @@ func build_fleet() -> void:
 		facade(11.0, 5.2, 4.0, 3.2, 2.4, dyn)
 		for k in range(3):
 			B(0.9, 1.1, 0.05, "#9aa3a8", 9.9 + k * 1.1, 0.7, 6.83, dyn)
+
+## Begleitschutz für schwere Geld- und Goldtransporte: Streifenwagen voraus, SEK dahinter
+func heavy_escort(pid: String, u0: float) -> void:
+	var gap: float = 3.2 / float(PATHS_LEN_EST.get(pid, 60.0))
+	var pc := police_car()
+	dyn.add_child(pc)
+	anim.trucks.append({t = pc, u = u0 + gap, path = pid})
+	if cnt("g", "g7") > 0:
+		var sek := police_car("#1d2326", "#3a4046", true)
+		dyn.add_child(sek)
+		anim.trucks.append({t = sek, u = u0 - gap * 1.1, path = pid})
+
+const PATHS_LEN_EST := {"light": 56.0, "mid": 75.0, "heavy": 60.0}
 
 var pile_slots := []
 
@@ -2181,6 +2270,32 @@ func piles() -> void:
 
 # ---------------------------------------------------------------- Wege
 const TRUCK_PATH := [[-2.8, 5.0], [6.0, 5.5], [14.5, 9.0], [14.5, 12.8], [42.0, 12.8]]
+const PATHS := {
+	"light": [[-2.8, 5.0], [6.0, 5.5], [14.5, 9.0], [14.5, 12.8], [42.0, 12.8]],
+	"mid": [[-2.8, 5.0], [2.0, 6.5], [2.0, 12.8], [2.0, 19.5], [-22.0, 19.5], [-22.0, 50.0]],
+	"heavy": [[-2.8, 5.0], [10.0, 6.5], [10.0, 12.8], [10.0, 19.5], [10.0, 50.0]],
+}
+var path_len := {}
+
+func along_path(pid: String, u: float) -> Array:
+	var P: Array = PATHS[pid]
+	if not path_len.has(pid):
+		var tot := 0.0
+		for i in range(P.size() - 1):
+			tot += Vector2(P[i + 1][0] - P[i][0], P[i + 1][1] - P[i][1]).length()
+		path_len[pid] = tot
+	var d: float = clamp(u, 0.0, 1.0) * float(path_len[pid])
+	for i in range(P.size() - 1):
+		var a: Array = P[i]
+		var b: Array = P[i + 1]
+		var l := Vector2(b[0] - a[0], b[1] - a[1]).length()
+		if d <= l:
+			var f: float = d / l
+			return [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, atan2(-(b[1] - a[1]), b[0] - a[0])]
+		d -= l
+	var e: Array = P[P.size() - 1]
+	return [e[0], e[1], 0.0]
+
 var segs := []
 var seg_tot := 0.0
 func along(u: float) -> Array:
@@ -2462,7 +2577,8 @@ func _process(dt: float) -> void:
 		anim.cams[i].rotation.y = sin(t * 0.6 + i) * 0.9
 	var dsp: float = 0.02 + min(0.08, log(main.deliv() + 1.0) / log(10.0) * 0.012)
 	for tr in anim.trucks:
-		var a := along(fposmod(tr.u + t * dsp, 1.0))
+		var pid: String = tr.get("path", "light")
+		var a := along_path(pid, fposmod(tr.u + t * dsp * (110.0 / float(path_len.get(pid, 110.0))), 1.0))
 		tr.t.position = Vector3(a[0], 0, a[1])
 		tr.t.rotation.y = a[2]
 	for f in anim.get("fire", []):

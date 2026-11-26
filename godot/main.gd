@@ -142,8 +142,8 @@ const ROOMS := [
 	{id="buch", n="Buchhaltung", d="Spart Lohnkosten: −5 % Löhne je Stufe.", c=20000.0},
 ]
 const STAFF := [
-	{id="arb", n="Produktionsmitarbeiter", d="Bedienen die Maschinen: bis +50 % Herstellung, wenn auf 2 Maschinen 1 Person kommt.", fee=50.0},
-	{id="fahr", n="Fahrer", d="Fahren die Transporter: bis +40 % Auslieferung bei 1 Fahrer je 2 Fahrzeuge.", fee=60.0},
+	{id="arb", n="Produktionsmitarbeiter", d="Ohne sie steht jede Maschine still. Mehr Maschinen brauchen mehr Personal.", fee=50.0},
+	{id="fahr", n="Fahrer", d="Ohne Fahrer wird nichts ausgeliefert – und ohne Auslieferung kein Geld.", fee=60.0},
 	{id="wach", n="Wachleute", d="+4 % Schutz je Person (bis +100 %).", fee=80.0},
 	{id="putz", n="Reinigungskräfte", d="+2 % Herstellung je Person (bis +20 %), weniger Maschinenschäden. Braucht den Putzraum.", fee=40.0},
 	{id="verw", n="Verwaltungskräfte", d="+3 % Auftragslohn je Person (bis +60 %), −2 % Löhne (bis −40 %). Braucht das Personalbüro.", fee=100.0},
@@ -293,7 +293,7 @@ func blank() -> Dictionary:
 	return {cash=25.0, stock=0.0, lv=0, total=0.0, life=0.0, l={"c1": 1}, v={"v1": 1}, t={}, f={}, g={"g1": 2},
 		rep=0, next=90.0, warn=0.0, gang=0, won=0, lost=0, log=[], ts=now(), mig1=1, orders=[], odone=0,
 		mgr={}, auto={}, sites={}, shred=0, gold=0, zins=2, fx=[], gt=0.0, ev_next=240.0, ev_cur="", daily_day=0, streak=0,
-		box_ts=0.0, ach={}, coins=[], fakes=0, gfx=2, rooms={}, staff={}, owed=0.0, payday=300.0, unpaid_until=0.0, paid_total=0.0, hunt_next=60.0, escort=0, museum=0, amb_next=300.0, comm_next=300.0, fire=0, fire_t=0.0, fire_next=480.0, fires=0}
+		box_ts=0.0, ach={}, coins=[], fakes=0, gfx=2, rooms={}, staff={"arb": 1, "fahr": 1}, owed=0.0, payday=300.0, unpaid_until=0.0, paid_total=0.0, hunt_next=60.0, escort=0, museum=0, amb_next=300.0, comm_next=300.0, fire=0, fire_t=0.0, fire_next=480.0, fires=0}
 
 func load_game() -> void:
 	S = blank()
@@ -418,6 +418,16 @@ func apply_state(x: Dictionary) -> void:
 	for k in ["orders", "fx", "coins"]:
 		if typeof(b[k]) != TYPE_ARRAY:
 			b[k] = []
+	if not b.has("staff_need_v1"):
+		# Umstellung „ohne Personal kein Verdienst“: vorhandene Spielstände bekommen einmalig genug Personal
+		b["staff_need_v1"] = true
+		var keep_s := S
+		S = b
+		if typeof(S["staff"]) != TYPE_DICTIONARY:
+			S["staff"] = {}
+		S["staff"]["arb"] = max(staff("arb"), need_arb())
+		S["staff"]["fahr"] = max(staff("fahr"), need_fahr())
+		S = keep_s
 	if not b.has("fleet_auto_off"):
 		b["auto"]["fleet"] = false
 		b["fleet_auto_off"] = true
@@ -496,7 +506,7 @@ func museum_m() -> float:
 	return 1.0 + 0.05 * float(S["rep"]) if int(S["museum"]) > 0 else 1.0
 
 func glob_m() -> float:
-	return (1.0 + 0.03 * int(S["gold"])) * (1.0 + 0.02 * ach_n()) * museum_m() * fx_m("prod") * (1.0 + staff_prod_bonus()) * (1.0 + 0.04 * room("chef"))
+	return (1.0 + 0.03 * int(S["gold"])) * (1.0 + 0.02 * ach_n()) * museum_m() * fx_m("prod") * cov_arb() * (1.0 + staff_prod_bonus()) * (1.0 + 0.04 * room("chef"))
 
 func hall_m(note: bool) -> float:
 	var m := 1.0
@@ -562,23 +572,35 @@ func vans_total() -> int:
 		n += cnt("v", v.id)
 	return n
 
+## Ohne Personal kein Verdienst: Maschinen brauchen Bedienpersonal, Fahrzeuge brauchen Fahrer
+func need_arb() -> int:
+	var m := machines_total()
+	return 0 if m == 0 else int(ceil(sqrt(float(m))))
+
+func need_fahr() -> int:
+	var v := vans_total()
+	return 0 if v == 0 else int(ceil(sqrt(float(v))))
+
+func cov_arb() -> float:
+	var n := need_arb()
+	return 1.0 if n == 0 else min(1.0, float(staff("arb")) / n)
+
+func cov_fahr() -> float:
+	var n := need_fahr()
+	return 1.0 if n == 0 else min(1.0, float(staff("fahr")) / n)
+
+## Zusatzbonus (Zufriedenheit, Reinigung) – nur wenn genug Personal da ist
 func staff_prod_bonus() -> float:
-	var need: float = max(1.0, machines_total() / 2.0)
-	var b: float = 0.5 * min(1.0, staff("arb") / need)
-	b += min(0.2, 0.02 * staff("putz"))
-	return b * morale_f()
+	return (0.3 * morale() / 100.0 + min(0.2, 0.02 * staff("putz"))) * cov_arb()
 
 func staff_del_bonus() -> float:
-	var need: float = max(1.0, vans_total() / 2.0)
-	return 0.4 * min(1.0, staff("fahr") / need) * morale_f()
+	return 0.25 * morale() / 100.0 * cov_fahr()
 
 ## Lohnkosten pro Sekunde: ein Teil des Mehrertrags, den das Personal bringt
 func wage_rate() -> float:
 	if staff_total() == 0:
 		return 0.0
-	var bonus: float = staff_prod_bonus()
-	var share: float = bonus / (1.0 + bonus)
-	var base_w: float = income() * share * 0.35 + staff_total() * 0.05
+	var base_w: float = income() * 0.1 + staff_total() * 0.05
 	var cut: float = min(0.4, 0.02 * staff("verw")) + 0.05 * room("buch")
 	return base_w * max(0.3, 1.0 - cut)
 
@@ -628,7 +650,7 @@ func prod_calc() -> float:
 	return s
 
 func del_m() -> float:
-	return tm("del") * rep_m() * (2.0 if has_d("sites", "leipzig") else 1.0) * (1.5 if has_d("mgr", "fleet") else 1.0) * fx_m("del") * (1.0 + staff_del_bonus())
+	return tm("del") * rep_m() * (2.0 if has_d("sites", "leipzig") else 1.0) * (1.5 if has_d("mgr", "fleet") else 1.0) * fx_m("del") * cov_fahr() * (1.0 + staff_del_bonus())
 
 func deliv_calc() -> float:
 	var s := 0.0
@@ -975,7 +997,13 @@ var drag_scrolled := false
 var fling := 0.0
 var scroll_pos := 0.0
 
+func _clear_hold() -> void:
+	hold_fired = false
+
 func _input(ev: InputEvent) -> void:
+	if ev is InputEventMouseButton and not ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
+		hold_active = false
+		call_deferred("_clear_hold")
 	if scroll == null:
 		return
 	if ev is InputEventScreenTouch and ev.index == 0:
@@ -987,6 +1015,8 @@ func _input(ev: InputEvent) -> void:
 			scroll_pos = scroll.scroll_vertical
 		else:
 			touch_active = false
+			hold_active = false
+			call_deferred("_clear_hold")
 	elif ev is InputEventScreenDrag and ev.index == 0 and touch_active:
 		drag_dist += abs(ev.relative.y) + abs(ev.relative.x) * 0.5
 		if drag_dist > 14.0:
@@ -1079,6 +1109,7 @@ func world_render_tick(dt: float) -> void:
 func _process(dt: float) -> void:
 	dt = min(dt, 1.0)
 	fling_tick(dt)
+	hold_tick(dt)
 	world_render_tick(dt)
 	download_tick()
 	S["gt"] = float(S["gt"]) + dt
@@ -1130,7 +1161,7 @@ func lbl(t: String, size := 26, col := C_INK, bold := false, wrap := false) -> L
 		l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	return l
 
-func btn(t: String, cb: Callable, kind := "main", minw := 190) -> Button:
+func btn(t: String, cb: Callable, kind := "main", minw := 190, rep := false) -> Button:
 	var b := Button.new()
 	b.text = t
 	b.custom_minimum_size = Vector2(minw, 78)
@@ -1162,9 +1193,42 @@ func btn(t: String, cb: Callable, kind := "main", minw := 190) -> Button:
 	b.add_theme_color_override("font_focus_color", fg)
 	b.add_theme_color_override("font_disabled_color", C_MUT)
 	b.pressed.connect(func():
-		if not drag_scrolled:
+		if not drag_scrolled and not hold_fired:
 			cb.call())
+	if rep:
+		b.button_down.connect(func():
+			hold_cb = cb
+			hold_active = true
+			hold_fired = false
+			hold_t = 0.45
+			hold_n = 0)
 	return b
+
+## Gedrückt halten: wiederholt kaufen, immer schneller, bis das Geld nicht mehr reicht
+var hold_cb: Callable
+var hold_active := false
+var hold_fired := false
+var hold_t := 0.0
+var hold_n := 0
+
+func hold_tick(dt: float) -> void:
+	if not hold_active:
+		return
+	if drag_scrolled:
+		hold_active = false
+		return
+	hold_t -= dt
+	if hold_t > 0.0:
+		return
+	var c0: float = float(S["cash"])
+	if hold_cb.is_valid():
+		hold_cb.call()
+	hold_fired = true
+	hold_n += 1
+	if is_equal_approx(float(S["cash"]), c0):
+		hold_active = false
+		return
+	hold_t = max(0.03, 0.16 - hold_n * 0.012)
 
 func pbar(h := 10) -> ProgressBar:
 	var p := ProgressBar.new()
@@ -1626,7 +1690,7 @@ func render_list() -> void:
 		var desc := lbl("", 23, C_MUT, false, true)
 		left.add_child(desc)
 		var key: String = it.k
-		var b := btn("", func(): buy(key), "main", 220)
+		var b := btn("", func(): buy(key), "main", 220, true)
 		b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		row.add_child(b)
 		refs[key] = {btn=b, desc=desc, title=t, panel=p}
@@ -1951,7 +2015,9 @@ func update_ui() -> void:
 	bar_stock.value = sp
 	var hint := ""
 	if S["warn"] <= 0.0:
-		if sp > 95.0 and p > d:
+		if cov_arb() < 1.0 or cov_fahr() < 1.0:
+			hint = "Zu wenig Personal: %s einstellen (Zentrale → Personal)!" % ("Produktionsmitarbeiter und Fahrer" if cov_arb() < 1.0 and cov_fahr() < 1.0 else ("Produktionsmitarbeiter" if cov_arb() < 1.0 else "Fahrer"))
+		elif sp > 95.0 and p > d:
 			hint = "Lager voll – mehr Fahrzeuge oder größeres Lager!"
 		elif p > d * 1.5:
 			hint = "Fuhrpark kommt nicht hinterher."
@@ -2699,7 +2765,7 @@ func extra_card(title: String, desc: String, key: String, label: String, ok: boo
 	row.add_child(left)
 	left.add_child(lbl(title, 28, C_INK, true, true))
 	left.add_child(lbl(desc, 23, C_MUT, false, true))
-	var b := btn(label, func(): buy_extra(key), "main", 220)
+	var b := btn(label, func(): buy_extra(key), "main", 220, not key.begins_with("auto"))
 	b.disabled = not ok or done
 	b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	row.add_child(b)
@@ -2825,7 +2891,7 @@ func render_staff() -> void:
 		var id: String = st.id
 		var minus := btn("−", func(): hire(id, -(int(amt) if amt != "max" else 10)), "light", 80)
 		row.add_child(minus)
-		var plus := btn("", func(): hire(id, hire_count(id)), "main", 230)
+		var plus := btn("", func(): hire(id, hire_count(id)), "main", 230, true)
 		row.add_child(plus)
 		refs["st:" + id] = {cnt=cnt_l, eff=eff, plus=plus, minus=minus}
 
@@ -2854,9 +2920,9 @@ func update_staff_ui() -> void:
 		var e := ""
 		match st.id:
 			"arb":
-				e = "Bedarf: %d · Bonus Herstellung +%d %%" % [int(ceil(machines_total() / 2.0)), int(staff_prod_bonus() * 100)]
+				e = "Benötigt: %d · Maschinen laufen zu %d %%" % [need_arb(), int(cov_arb() * 100)]
 			"fahr":
-				e = "Bedarf: %d · Bonus Auslieferung +%d %%" % [int(ceil(vans_total() / 2.0)), int(staff_del_bonus() * 100)]
+				e = "Benötigt: %d · Fahrzeuge fahren zu %d %%" % [need_fahr(), int(cov_fahr() * 100)]
 			"wach":
 				e = "Schutz +%d %%" % int(min(1.0, 0.04 * n) * 100)
 			"putz":
