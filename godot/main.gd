@@ -1489,6 +1489,23 @@ func render_list() -> void:
 		b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		row.add_child(b)
 		refs[key] = {btn=b, desc=desc, title=t, panel=p}
+		# Fahrzeug-Upgrade zum nächsthöheren Typ
+		if view == "deliv":
+			var vi := van_index(key.split(":")[1])
+			if vi >= 0 and vi < VAN.size() - 1:
+				var urow := hb(14)
+				var outer := vb(8)
+				p.remove_child(row)
+				p.add_child(outer)
+				outer.add_child(row)
+				outer.add_child(urow)
+				var ud := lbl("", 23, C_MUT, false, true)
+				urow.add_child(ud)
+				var idx := vi
+				var ub := btn("", func(): upgrade_van(idx), "teal", 220)
+				ub.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+				urow.add_child(ub)
+				refs["up:" + key] = {btn=ub, desc=ud, i=vi}
 
 func render_orders() -> void:
 	head_title("Aufträge", "Länder außerhalb der EU bestellen Münzen und Scheine. Annehmen kannst du nur, wenn dein Werk die Voraussetzungen erfüllt. Jeder laufende Auftrag nutzt 20 % deiner Herstellung; je mehr Voraussetzungen, desto höher der Lohn.")
@@ -1894,6 +1911,24 @@ func update_ui() -> void:
 		r.bar.value = rk
 		var nxt := "Überfall läuft!" if S["warn"] > 0.0 else "nächste Bedrohung in ca. %d s" % int(ceil(S["next"]))
 		r.desc.text = "Schutz %s gegen Bedrohung %s · %s · abgewehrt %d, verloren %d" % [num(defense()), num(threat()), nxt, int(S["won"]), int(S["lost"])]
+	if view == "deliv":
+		for key in refs.keys():
+			if not key.begins_with("up:"):
+				continue
+			var ur: Dictionary = refs[key]
+			var i: int = ur.i
+			var cur: Dictionary = VAN[i]
+			var nxt: Dictionary = VAN[i + 1]
+			var plan := up_plan(i)
+			var gain: float = (nxt.r - cur.r) * del_m()
+			if int(plan[0]) <= 0:
+				ur.desc.text = "Upgrade zu %s: kein %s vorhanden" % [nxt.n, cur.n]
+				ur.btn.text = "Upgrade"
+				ur.btn.disabled = true
+			else:
+				ur.desc.text = "Upgrade zu %s · +%s/s je Fahrzeug · 30 %% günstiger als neu" % [nxt.n, fmt(gain)]
+				ur.btn.text = ("↑ %d× " % plan[0] if int(plan[0]) > 1 else "↑ ") + fmt(plan[1])
+				ur.btn.disabled = float(S["cash"]) < float(plan[1])
 	for it in list_items():
 		if not refs.has(it.k):
 			continue
@@ -2291,6 +2326,50 @@ func shred_cost() -> float:
 
 func escort_cost() -> float:
 	return 500.0 * pow(5.0, int(S["escort"]))
+
+# ---------------------------------------------------------------- Fahrzeug-Upgrade
+const UP_DISCOUNT := 0.7
+
+func van_index(id: String) -> int:
+	for i in range(VAN.size()):
+		if VAN[i].id == id:
+			return i
+	return -1
+
+## Wie viele Fahrzeuge (Typ i -> i+1) und zu welchem Preis
+func up_plan(i: int) -> Array:
+	var cur: Dictionary = VAN[i]
+	var nxt: Dictionary = VAN[i + 1]
+	var own := cnt("v", cur.id)
+	var cn := cnt("v", nxt.id)
+	if own <= 0:
+		return [0, 0.0]
+	var n := 1
+	if amt == "max":
+		n = 0
+		while n < own and cost_n(nxt.b, cn, n + 1) * UP_DISCOUNT <= float(S["cash"]):
+			n += 1
+		n = max(1, n)
+	else:
+		n = min(int(amt), own)
+	return [n, cost_n(nxt.b, cn, n) * UP_DISCOUNT]
+
+func upgrade_van(i: int) -> void:
+	invalidate()
+	var plan := up_plan(i)
+	var n: int = plan[0]
+	var price: float = plan[1]
+	if n <= 0 or float(S["cash"]) < price:
+		return
+	var cur: Dictionary = VAN[i]
+	var nxt: Dictionary = VAN[i + 1]
+	S["cash"] -= price
+	S["v"][cur.id] = cnt("v", cur.id) - n
+	S["v"][nxt.id] = cnt("v", nxt.id) + n
+	add_log("%d× %s zu %s umgebaut (%s)." % [n, cur.n, nxt.n, fmt(price)], "good")
+	world.dirty = true
+	save_game()
+	update_ui()
 
 func buy_extra(k: String) -> void:
 	invalidate()
