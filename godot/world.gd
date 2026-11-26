@@ -32,6 +32,7 @@ func visual_sig() -> String:
 	var S: Dictionary = main.S
 	var parts := PackedStringArray()
 	parts.append("fw%d,%d" % [int(S.get("fire", 0)), int(main.burning())])
+	parts.append("ops%s,%d,%d,%d,%d,%d,%d,%d" % [S["up"], int(main.absent_frac() > 0.0 and main.fx_active("acc")), main.staff_total() / 10, int(S["museum"]), main.room("kantine"), int(S["wx"] == "snow"), main.SITES.size(), int(cnt("v", "v7") > 0)])
 	var fz: int = main.feat_n()
 	for l in main.LINES:
 		var c := cnt("l", l.id)
@@ -74,6 +75,11 @@ var sun: DirectionalLight3D
 var lamps := []
 var lamp_mat: StandardMaterial3D
 var win_mat: StandardMaterial3D
+var pool_mat: StandardMaterial3D
+var rain: CPUParticles3D
+var snow: CPUParticles3D
+var snow_cover: MeshInstance3D
+var flash_t := 0.0
 
 const LAMP := ["#9aa3a8", "#3fd68a", "#3fd68a", "#ffc23d", "#ffc23d", "#ff4d5e", "#ff4d5e", "#a46bff", "#a46bff", "#a46bff"]
 const ZONES := [
@@ -88,6 +94,8 @@ const ZONES := [
 
 # ---------------------------------------------------------------- Bausteine
 func mat(c: String, alpha := 1.0, emit := false) -> StandardMaterial3D:
+	if c == "#2c3f4d" and win_mat != null and alpha >= 1.0:
+		return win_mat
 	var k := c + str(alpha) + str(emit)
 	if mats.has(k):
 		return mats[k]
@@ -327,8 +335,23 @@ func _ready() -> void:
 	cam.far = 250.0
 	add_child(cam)
 	cam.current = true
+	lamp_mat = StandardMaterial3D.new()
+	lamp_mat.albedo_color = Color("#fff2c0")
+	lamp_mat.emission_enabled = true
+	lamp_mat.emission = Color("#ffd27a")
+	win_mat = StandardMaterial3D.new()
+	win_mat.albedo_color = Color("#2a3a40")
+	win_mat.emission_enabled = true
+	win_mat.emission = Color("#ffc86a")
+	pool_mat = StandardMaterial3D.new()
+	pool_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	pool_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	pool_mat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	pool_mat.albedo_color = Color(1.0, 0.78, 0.45, 0.0)
+	pool_mat.no_depth_test = false
 	build_static()
-	merge_children(self, {beacon: true})
+	build_weather()
+	merge_children(self, {beacon: true, rain: true, snow: true, snow_cover: true})
 	apply_quality()
 	fit()
 
@@ -475,7 +498,7 @@ const BLOCKED := [
 	[-20.0, -18.0, 20.0, 18.0],
 	[-25.0, -27.0, 24.0, -21.0], [18.5, -27.0, 24.0, 22.5], [-25.0, 16.5, 24.0, 22.5], [-25.0, -27.0, -19.0, 22.5],
 	[-19.0, 10.5, 84.0, 15.2],
-	[-19.0, -38.5, 19.0, -26.5],
+	[-21.0, -41.5, 21.0, -26.5], [-38.0, -26.0, -25.0, -16.0], [-38.0, -18.0, -25.0, -12.0],
 	[25.0, -4.0, 37.0, 9.5], [23.0, 13.5, 34.0, 19.0],
 	[-36.0, -12.0, -26.5, -3.0], [-33.0, 1.5, -25.5, 8.5], [-38.0, 9.5, -25.0, 18.5],
 	[-60.0, 25.0, 90.0, 28.5], [7.0, 18.0, 13.0, 55.0], [-25.0, 18.0, -19.0, 55.0],
@@ -526,11 +549,32 @@ func bush(x: float, z: float, n: int) -> void:
 	sphere(0.35, c[(n + 2) % 3], x - 0.3, 0.25, z + 0.3, self, 8)
 
 ## Straße mit Mittelstreifen
+## Straßenlaterne mit Lichtkegel auf dem Boden (leuchtet nachts)
+func lamp_post(x: float, z: float, p: Node3D = null, h := 3.2, pool_r := 2.6) -> void:
+	C(0.07, 0.09, h, "#3a4448", x, h / 2.0, z, p, 6)
+	var hd := B(0.5, 0.16, 0.5, "#3a4448", x, h + 0.05, z, p)
+	var bulb := B(0.36, 0.1, 0.36, "#fff2c0", x, h - 0.06, z, p)
+	bulb.material_override = lamp_mat
+	light_pool(x, z, pool_r, p)
+
+func light_pool(x: float, z: float, r: float, p: Node3D = null) -> void:
+	var lp := C(r, r, 0.02, "#ffffff", x, 0.17, z, p, 16)
+	lp.material_override = pool_mat
+	lp.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+
 func road(x1: float, z1: float, x2: float, z2: float, p: Node3D = null) -> void:
 	var horiz: bool = abs(x2 - x1) >= abs(z2 - z1)
 	var L: float = max(abs(x2 - x1), abs(z2 - z1))
 	var cx := (x1 + x2) / 2.0
 	var cz := (z1 + z2) / 2.0
+	if p == null and L > 5.0:
+		var q := 4.0
+		while q < L:
+			var lx: float = (min(x1, x2) + q) if horiz else cx + 2.45
+			var lz: float = cz + 2.45 if horiz else (min(z1, z2) + q)
+			if not (lx > -17.0 and lx < 17.0 and lz > -15.0 and lz < 15.0):
+				lamp_post(lx, lz)
+			q += 11.0
 	if horiz:
 		B(L + 3.0, 0.08, 0.9, "#8d8f8a", cx, 0.07, cz - 1.95, p)
 		B(L + 3.0, 0.08, 0.9, "#8d8f8a", cx, 0.07, cz + 1.95, p)
@@ -580,6 +624,7 @@ func build_static() -> void:
 	road(-22.0, -8.0, -27.5, -8.0)
 	road(-22.0, 5.0, -27.0, 5.0)
 	road(-22.0, 14.0, -27.0, 14.0)
+	road(-22.0, -21.0, -26.5, -21.0)
 	# Ausfahrten für mittlere und schwere Transporte (Süd), Abfahrten über die Bahn
 	road(2.0, 12.8, 2.0, RING_S)
 	road(10.0, 12.8, 10.0, RING_S)
@@ -646,19 +691,29 @@ func build_static() -> void:
 				B(4.0 + hv * 3.0, 0.02, 3.5 + hv * 2.5, gc, gx, 0.005, gz)
 			gz += 6.0
 		gx += 6.0
-	lamp_mat = StandardMaterial3D.new()
-	lamp_mat.albedo_color = Color("#fff2c0")
-	lamp_mat.emission_enabled = true
-	lamp_mat.emission = Color("#ffd27a")
-	win_mat = StandardMaterial3D.new()
-	win_mat.albedo_color = Color("#2a3a40")
-	win_mat.emission_enabled = true
-	win_mat.emission = Color("#ffc86a")
 	for lp in [[-2, 11.2], [6, 11.2], [14, 11.2], [22, 11.2], [30, 11.2], [-16.2, -5], [-16.2, 5], [0, -14.2], [16.2, -6]]:
 		C(0.07, 0.09, 3.2, "#3a4448", lp[0], 1.6, lp[1], null, 6)
 		var hd := B(0.5, 0.18, 0.5, "#3a4448", lp[0], 3.25, lp[1])
 		var bulb := B(0.36, 0.12, 0.36, "#fff2c0", lp[0], 3.12, lp[1])
 		bulb.material_override = lamp_mat
+		light_pool(lp[0], lp[1], 2.6)
+	# Lichtbänder über den Hallen
+	for hx in [-8.0, 8.0]:
+		for hz in [-9.7, -2.3]:
+			for o in [-1.6, 1.6]:
+				var lb := B(12.0, 0.06, 0.14, "#fff2c0", hx, 2.6, hz + o)
+				lb.material_override = lamp_mat
+				B(0.03, 0.4, 0.03, "#5a6163", hx - 5.8, 2.85, hz + o)
+				B(0.03, 0.4, 0.03, "#5a6163", hx + 5.8, 2.85, hz + o)
+			var hp := B(13.0, 0.02, 5.6, "#ffffff", hx, 0.22, hz)
+			hp.material_override = pool_mat
+			hp.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	# Flutlichtmasten an den Werksecken
+	for fl in [[-16.6, -14.6], [16.6, -14.6], [-16.6, 14.6], [16.6, 14.6], [0.0, 14.6]]:
+		C(0.1, 0.14, 6.0, "#5a6163", fl[0], 3.0, fl[1], null, 6)
+		var fh := B(0.9, 0.4, 0.5, "#fff2c0", fl[0], 6.0, fl[1])
+		fh.material_override = lamp_mat
+		light_pool(fl[0] * 0.8, fl[1] * 0.8, 5.0)
 	annex(-8.0, false)
 	annex(8.0, true)
 	hall_paths(-8.0, false)
@@ -842,6 +897,7 @@ func build() -> void:
 	build_extras()
 	build_security()
 	build_firebrigade()
+	build_ops()
 	build_fleet()
 	build_carts()
 	build_admin()
@@ -877,6 +933,9 @@ func build() -> void:
 			keep[anim[k2]] = true
 	if anim.rotor != null:
 		keep[anim.rotor.get_parent()] = true
+	for k3 in ["plow", "amb_light"]:
+		if anim.has(k3) and anim[k3] != null:
+			keep[anim[k3]] = true
 	for w in anim.work:
 		keep[w.p] = true
 	for g in anim.guards:
@@ -1338,7 +1397,7 @@ func build_wall(wt: int) -> void:
 				sl.material_override = lamp_mat
 
 # ---------------------------------------------------------------- Verwaltungsgebäude
-const ROOM_FLOOR := {"lobby": "#d8cfc0", "chef": "#7a5a3a", "hr": "#c9d6e3", "umk": "#b9c4c9", "putz": "#a9b8a3", "kantine": "#e8d9b0", "pause": "#c7b9d9", "leit": "#5a6670", "buch": "#d3d9cf"}
+const ROOM_FLOOR := {"lobby": "#d8cfc0", "chef": "#7a5a3a", "hr": "#c9d6e3", "umk": "#b9c4c9", "putz": "#a9b8a3", "kantine": "#e8d9b0", "pause": "#c7b9d9", "leit": "#5a6670", "buch": "#d3d9cf", "it": "#3a4650", "sani": "#dfe8ea"}
 
 func desk(x: float, z: float, p: Node3D, pc := true) -> void:
 	B(0.9, 0.06, 0.5, "#8a6a4a", x, 0.62, z, p)
@@ -1363,18 +1422,19 @@ func build_admin() -> void:
 	var z0 := -32.5
 	var depth := 7.0
 	var w := 3.5
-	var x0 := -15.75
+	var nr: int = main.ROOMS.size()
+	var x0 := -nr * w / 2.0
 	# Gesamtgebäude: Bodenplatte, Rückwand mit Fenstern, Dachkante
-	B(9 * w + 0.6, 0.18, depth + 0.6, "#8e9a9e", 0.0, 0.1, z0, dyn)
-	B(9 * w + 0.6, 2.4, 0.3, "#e9e4d8", 0.0, 1.3, z0 - depth / 2.0, dyn)
-	B(9 * w + 0.6, 0.25, 0.4, "#0e8a7c", 0.0, 2.55, z0 - depth / 2.0, dyn)
-	for k in range(18):
+	B(nr * w + 0.6, 0.18, depth + 0.6, "#8e9a9e", 0.0, 0.1, z0, dyn)
+	B(nr * w + 0.6, 2.4, 0.3, "#e9e4d8", 0.0, 1.3, z0 - depth / 2.0, dyn)
+	B(nr * w + 0.6, 0.25, 0.4, "#0e8a7c", 0.0, 2.55, z0 - depth / 2.0, dyn)
+	for k in range(nr * 2):
 		B(0.9, 0.7, 0.04, "#2c3f4d", x0 + 0.9 + k * 1.75, 1.55, z0 - depth / 2.0 + 0.17, dyn)
 	B(0.3, 1.2, depth, "#e9e4d8", x0 - 0.15, 0.7, z0, dyn)
-	B(0.3, 1.2, depth, "#e9e4d8", x0 + 9 * w + 0.15, 0.7, z0, dyn)
+	B(0.3, 1.2, depth, "#e9e4d8", x0 + nr * w + 0.15, 0.7, z0, dyn)
 	for k in range(8):
 		B(0.08, 0.02, 1.6, "#ffffff", -14.0 + k * 4.0, 0.12, z0 + depth / 2.0 + 1.6, dyn)
-	B(9 * w + 0.6, 0.05, 3.4, "#454b4e", 0.0, 0.1, z0 + depth / 2.0 + 1.6, dyn)
+	B(nr * w + 0.6, 0.05, 3.4, "#454b4e", 0.0, 0.1, z0 + depth / 2.0 + 1.6, dyn)
 	var civ := ["#c8102e", "#e8ecee", "#2a2f3a", "#3d6fb0", "#e2b53c", "#6fae8f"]
 	for k in range(6):
 		var car := police_car(civ[k], civ[k], false, false)
@@ -1399,7 +1459,7 @@ func build_admin() -> void:
 		var cx := x0 + w / 2.0 + i * w
 		i += 1
 		# Trennwand
-		if i < 9:
+		if i < nr:
 			B(0.12, 0.7, depth, "#d9d2c2", cx + w / 2.0, 0.55, z0, dyn)
 		if lv == 0:
 			B(w - 0.4, 0.04, depth - 0.6, "#6f7a7e", cx, 0.2, z0, dyn)
@@ -1492,6 +1552,26 @@ func build_admin() -> void:
 					tvs.material_override = mat("#4ab0ff", 1.0, true)
 				for k in range(min(lv, 3)):
 					plant(cx - 1.3, z0 - 0.5 + k * 1.2, dyn)
+			"it":
+				for k in range(min(lv + 1, 5)):
+					var rx := cx - 1.3 + k * 0.62
+					B(0.5, 1.7, 0.6, "#1d2326", rx, 1.0, z0 - 3.0, dyn)
+					for q in range(5):
+						var led := B(0.04, 0.04, 0.02, "#3fd68a" if (k + q) % 3 else "#4ab0ff", rx - 0.15, 0.4 + q * 0.3, z0 - 2.69, dyn)
+						led.material_override = mat("#3fd68a" if (k + q) % 3 else "#4ab0ff", 1.0, true)
+				for k in range(min(lv, 3)):
+					desk(cx - 0.8 + (k % 2) * 1.6, z0 - 0.4 + int(k / 2) * 1.8, dyn)
+					person("#2a2f3a", dyn).position = Vector3(cx - 0.8 + (k % 2) * 1.6, 0.22, z0 + 0.05 + int(k / 2) * 1.8)
+			"sani":
+				B(0.8, 0.5, 1.9, "#e8ecee", cx - 0.9, 0.5, z0 - 1.8, dyn)
+				B(0.75, 0.08, 1.85, "#9fd3e6", cx - 0.9, 0.78, z0 - 1.8, dyn)
+				B(0.6, 1.4, 0.4, "#e8ecee", cx + 1.2, 0.9, z0 - 3.0, dyn)
+				B(0.3, 0.3, 0.02, "#c8102e", cx + 1.2, 1.2, z0 - 2.79, dyn)
+				B(0.1, 0.3, 0.02, "#ffffff", cx + 1.2, 1.2, z0 - 2.77, dyn)
+				B(0.3, 0.1, 0.02, "#ffffff", cx + 1.2, 1.2, z0 - 2.77, dyn)
+				if lv >= 2:
+					B(0.8, 0.5, 1.9, "#e8ecee", cx - 0.9, 0.5, z0 + 0.6, dyn)
+				person("#c8102e", dyn).position = Vector3(cx + 0.4, 0.22, z0 - 1.2)
 			"leit":
 				for k in range(min(lv * 2, 10)):
 					var mx2 := cx - 1.3 + (k % 5) * 0.65
@@ -1834,6 +1914,280 @@ func armored(v: Node3D, L: float, big: bool, body_c := "", stripe_c := "#e9b915"
 	for ax in axles:
 		wheel(ax, W / 2.0 - 0.05, r, v)
 		wheel(ax, -W / 2.0 + 0.05, r, v)
+
+# ---------------------------------------------------------------- Betrieb: Rettungsdienst, Parkhaus, Terrasse, Museumsbusse, Lieferanten, Winterdienst
+func head_pool(v: Node3D, front: float) -> void:
+	var hp := B(2.2, 0.01, 1.3, "#ffffff", front + 1.2, 0.16, 0, v)
+	hp.material_override = pool_mat
+	hp.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+
+func ambulance() -> Node3D:
+	var v := Node3D.new()
+	B(2.4, 0.1, 0.94, "#1b1f22", 0, 0.22, 0, v)
+	B(0.6, 0.45, 0.92, "#f4f6f7", 0.9, 0.5, 0, v)
+	B(1.8, 1.15, 0.96, "#f4f6f7", -0.3, 0.85, 0, v)
+	windshield(0.95, 0.92, 0.38, 0.84, v, 0.35)
+	B(1.81, 0.16, 0.97, "#ff5a1f", -0.3, 0.62, 0, v)
+	B(1.81, 0.08, 0.97, "#c8141e", -0.3, 0.78, 0, v)
+	B(0.02, 0.35, 0.12, "#c8141e", -0.3, 1.05, 0.49, v)
+	B(0.02, 0.12, 0.35, "#c8141e", -0.3, 1.05, 0.49, v)
+	var bl := B(0.25, 0.08, 0.7, "#2f6bff", 0.55, 1.47, 0, v)
+	bl.material_override = police_light()
+	lights(1.2, -1.2, 0.5, 0.34, v)
+	for ww in [[0.75, 0.48], [-0.75, 0.48], [0.75, -0.48], [-0.75, -0.48]]:
+		wheel(ww[0], ww[1], 0.22, v)
+	return v
+
+func coach(col: String) -> Node3D:
+	var v := Node3D.new()
+	B(4.4, 0.12, 1.0, "#1b1f22", 0, 0.25, 0, v)
+	B(4.6, 1.3, 1.06, col, 0, 0.98, 0, v)
+	B(4.3, 0.45, 1.08, "#22323d", -0.1, 1.25, 0, v)
+	B(0.06, 0.7, 0.98, "#22323d", 2.3, 1.15, 0, v)
+	B(4.61, 0.12, 1.07, "#0e5a8a", 0, 0.62, 0, v)
+	B(0.3, 0.9, 0.02, "#22323d", 1.8, 0.85, 0.54, v)
+	lights(2.3, -2.3, 0.55, 0.36, v)
+	for ax in [1.5, -1.0, -1.6]:
+		wheel(ax, 0.5, 0.26, v)
+		wheel(ax, -0.5, 0.26, v)
+	return v
+
+## Lieferant: Pritschen-LKW mit Metall-Coils, Papierrollen oder Farbcontainern
+func supply_truck(kind: int) -> Node3D:
+	var v := Node3D.new()
+	var cab: String = ["#2f6fb8", "#e8ecee", "#3f7a3a", "#8a5a2b"][kind % 4]
+	B(3.6, 0.14, 0.8, "#1b1f22", -0.1, 0.36, 0, v)
+	B(0.8, 1.15, 1.08, cab, 1.4, 1.0, 0, v)
+	B(0.04, 0.55, 1.0, "#22323d", 1.81, 1.22, 0, v)
+	B(2.6, 0.12, 1.1, "#5a6163", -0.55, 0.62, 0, v)
+	match kind % 3:
+		0:
+			for k in 3:
+				var co := C(0.38, 0.38, 0.5, "#a9b3b8", -1.4 + k * 0.85, 1.06, 0, v, 12)
+				co.rotation.x = PI / 2
+		1:
+			for k in 3:
+				C(0.36, 0.36, 0.85, "#f4f1e6", -1.4 + k * 0.85, 1.12, 0, v, 12)
+		_:
+			for k in 3:
+				B(0.75, 0.8, 0.9, "#e8ecee", -1.4 + k * 0.85, 1.1, 0, v)
+				B(0.6, 0.55, 0.7, ["#00a3d9", "#d6006e", "#f2d100"][k], -1.4 + k * 0.85, 1.1, 0, v)
+	lights(1.8, -1.85, 0.6, 0.4, v)
+	wheel(1.3, 0.5, 0.3, v)
+	wheel(1.3, -0.5, 0.3, v)
+	wheel(-1.3, 0.48, 0.3, v, true)
+	wheel(-1.3, -0.48, 0.3, v, true)
+	return v
+
+func plow_truck() -> Node3D:
+	var v := Node3D.new()
+	B(3.0, 0.14, 0.8, "#1b1f22", 0, 0.36, 0, v)
+	B(0.9, 1.1, 1.06, "#ff7a1a", 1.0, 1.0, 0, v)
+	B(0.04, 0.5, 1.0, "#22323d", 1.46, 1.2, 0, v)
+	B(1.8, 0.9, 1.0, "#ff7a1a", -0.6, 0.95, 0, v)
+	var blade := B(0.12, 0.5, 1.6, "#e8ecee", 1.75, 0.35, 0, v)
+	blade.rotation.y = 0.35
+	B(0.13, 0.12, 1.6, "#c8141e", 1.76, 0.5, 0, v)
+	var bc := B(0.25, 0.1, 0.5, "#ffb000", 1.0, 1.6, 0, v)
+	bc.material_override = mat("#ffb000", 1.0, true)
+	B(0.4, 0.3, 0.5, "#2b3033", -1.55, 0.6, 0, v)
+	wheel(1.0, 0.48, 0.3, v)
+	wheel(1.0, -0.48, 0.3, v)
+	wheel(-0.9, 0.48, 0.3, v)
+	wheel(-0.9, -0.48, 0.3, v)
+	head_pool(v, 1.8)
+	return v
+
+func build_ops() -> void:
+	var S: Dictionary = main.S
+	# Rettungsdienst bei Arbeitsunfall
+	if main.fx_active("acc"):
+		var am := ambulance()
+		am.position = Vector3(-5.0, 0.0, 2.6)
+		dyn.add_child(am)
+		merge_deep(am)
+		for k in 2:
+			person("#c8141e", dyn).position = Vector3(-7.0 + k * 0.7, 0.2, 1.8)
+		B(1.2, 0.35, 0.5, "#e8ecee", -6.6, 0.4, 2.6, dyn)
+	# Mitarbeiter-Parkhaus
+	var pk: int = main.up("park")
+	if pk > 0:
+		var px := -31.5
+		var pz := -21.0
+		var decks := pk + 1
+		for d in decks:
+			var y := 0.12 + d * 1.1
+			B(7.0, 0.18, 5.2, "#a9a59c", px, y, pz, dyn)
+			for c4 in [[-3.3, -2.4], [3.3, -2.4], [-3.3, 2.4], [3.3, 2.4], [0.0, -2.4], [0.0, 2.4]]:
+				B(0.25, 1.1, 0.25, "#8e8a82", px + c4[0], y + 0.55, pz + c4[1], dyn)
+			B(7.0, 0.4, 0.12, "#c9c3b5", px, y + 0.35, pz - 2.6, dyn)
+			B(7.0, 0.4, 0.12, "#c9c3b5", px, y + 0.35, pz + 2.6, dyn)
+		B(7.2, 0.1, 5.4, "#7d796f", px, 0.12 + decks * 1.1, pz, dyn)
+		var ramp := B(3.0, 0.12, 1.4, "#8e8a82", px + 4.6, 0.6, pz + 1.8, dyn)
+		ramp.rotation.z = 0.36
+		var civ := ["#c8102e", "#e8ecee", "#2a2f3a", "#3d6fb0", "#e2b53c", "#6fae8f", "#8a5a9e", "#b0b8bc"]
+		var ncar: int = min(main.staff_total() / 4, decks * 8)
+		for k in ncar:
+			var dk := int(k / 8)
+			var slot := k % 8
+			var car := police_car(civ[k % civ.size()], civ[k % civ.size()], false, false)
+			car.scale = Vector3(0.75, 0.75, 0.75)
+			car.rotation.y = PI / 2
+			car.position = Vector3(px - 2.7 + (slot % 4) * 1.8, 0.2 + dk * 1.1, pz + (-1.3 if slot < 4 else 1.3))
+			dyn.add_child(car)
+			merge_deep(car)
+		var pl := Label3D.new()
+		pl.text = "P"
+		pl.font_size = 110
+		pl.pixel_size = 0.011
+		pl.outline_size = 20
+		pl.modulate = Color("#ffffff")
+		pl.outline_modulate = Color("#0e5a8a")
+		pl.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		pl.position = Vector3(px, 1.6 + decks * 1.1, pz)
+		dyn.add_child(pl)
+	# Kantinen-Terrasse hinter der Verwaltung
+	var tr: int = main.up("terr")
+	if tr > 0:
+		var nr: int = main.ROOMS.size()
+		var ki := 5
+		for i in nr:
+			if main.ROOMS[i].id == "kantine":
+				ki = i
+		var cx: float = -nr * 3.5 / 2.0 + 1.75 + ki * 3.5
+		var tz := -38.6
+		B(3.4 + tr * 3.0, 0.1, 3.4, "#a5814f", cx, 0.12, tz, dyn)
+		var nt: int = 2 + tr * 2
+		for k in nt:
+			var tx2: float = cx - (tr * 1.5) - 0.6 + (k % (nt / 2)) * 1.9
+			var tz2: float = tz - 0.8 + int(k / (nt / 2)) * 1.6
+			C(0.4, 0.4, 0.05, "#e9e4d8", tx2, 0.66, tz2, dyn, 12)
+			C(0.04, 0.04, 0.5, "#5a6163", tx2, 0.42, tz2, dyn, 6)
+			C(0.03, 0.03, 1.6, "#5a6163", tx2, 1.0, tz2, dyn, 6)
+			C(0.0, 0.8, 0.35, ["#c8102e", "#e8ecee", "#0e8a7c"][k % 3], tx2, 1.85, tz2, dyn, 8)
+			chair(tx2 - 0.5, tz2, dyn)
+			chair(tx2 + 0.5, tz2, dyn)
+		for k in min(main.staff_total() / 6, nt * 2):
+			var pp := person(["#ff7a1a", "#3f6fb5", "#e8ecee", "#3b8f3a"][k % 4], dyn, false)
+			pp.position = Vector3(cx - (tr * 1.5) - 1.1 + (k % nt) * 1.0, 0.18, tz - 0.8 + (k % 2) * 1.6)
+	# Museumsbusse und Schulklassen
+	if int(S["museum"]) > 0 and main.up("bus") > 0:
+		for k in main.up("bus"):
+			var bs := coach(["#f2f2f2", "#ffc23d", "#e8ecee"][k])
+			bs.position = Vector3(-34.0 + k * 0.0, 0.0, -13.6 - k * 1.4)
+			bs.position.x = -31.0
+			dyn.add_child(bs)
+			merge_deep(bs)
+		for k in min(4 + main.up("bus") * 4, 14):
+			var kid := person(["#e2b53c", "#c8102e", "#3d6fb0", "#3b8f3a", "#8a5a9e"][k % 5], dyn, false)
+			kid.scale = Vector3(0.72, 0.72, 0.72)
+			kid.position = Vector3(-27.2 + (k % 4) * 0.5, 0.15, -9.4 + int(k / 4) * 0.55)
+			kid.rotation.y = -PI / 2
+		person("#2a2f3a", dyn).position = Vector3(-26.4, 0.15, -8.0)
+	# Lieferanten bringen Rohstoffe
+	for k in 1 + main.up("raw"):
+		var st := supply_truck(k)
+		head_pool(st, 1.8)
+		dyn.add_child(st)
+		anim.trucks.append({t = st, u = float(k) / (1.0 + main.up("raw")), path = "supply"})
+	# Winterdienst bei Schnee
+	anim["plow"] = null
+	if S["wx"] == "snow" and main.up("winter") > 0:
+		var pw := plow_truck()
+		dyn.add_child(pw)
+		anim["plow"] = pw
+
+# ---------------------------------------------------------------- Wetter
+func build_weather() -> void:
+	rain = CPUParticles3D.new()
+	rain.amount = 700
+	rain.lifetime = 1.1
+	rain.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
+	rain.emission_box_extents = Vector3(38, 1, 38)
+	rain.direction = Vector3(0.12, -1, 0.08)
+	rain.spread = 2.0
+	rain.initial_velocity_min = 24.0
+	rain.initial_velocity_max = 28.0
+	rain.gravity = Vector3(0, -9.8, 0)
+	var rm := BoxMesh.new()
+	rm.size = Vector3(0.03, 0.8, 0.03)
+	var rmat := StandardMaterial3D.new()
+	rmat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	rmat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	rmat.albedo_color = Color(0.75, 0.85, 1.0, 0.55)
+	rm.material = rmat
+	rain.mesh = rm
+	rain.emitting = false
+	rain.local_coords = false
+	add_child(rain)
+	snow = CPUParticles3D.new()
+	snow.amount = 900
+	snow.lifetime = 7.0
+	snow.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
+	snow.emission_box_extents = Vector3(38, 1, 38)
+	snow.direction = Vector3(0.1, -1, 0.05)
+	snow.spread = 15.0
+	snow.initial_velocity_min = 2.0
+	snow.initial_velocity_max = 3.0
+	snow.gravity = Vector3(0, -0.4, 0)
+	var sm2 := SphereMesh.new()
+	sm2.radius = 0.07
+	sm2.height = 0.14
+	sm2.radial_segments = 6
+	sm2.rings = 3
+	var smat := StandardMaterial3D.new()
+	smat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	smat.albedo_color = Color(1, 1, 1)
+	sm2.material = smat
+	snow.mesh = sm2
+	snow.emitting = false
+	snow.local_coords = false
+	add_child(snow)
+	snow_cover = MeshInstance3D.new()
+	var pm := PlaneMesh.new()
+	pm.size = Vector2(320, 320)
+	snow_cover.mesh = pm
+	var scm := StandardMaterial3D.new()
+	scm.albedo_color = Color(0.95, 0.97, 1.0, 0.6)
+	scm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	snow_cover.material_override = scm
+	snow_cover.position = Vector3(0, 0.03, 0)
+	snow_cover.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	snow_cover.visible = false
+	add_child(snow_cover)
+
+func weather_tick(night: float) -> void:
+	var w: String = main.S["wx"]
+	var hi: bool = main.S.get("gfx", 2) >= 1
+	rain.emitting = (w == "rain" or w == "storm") and hi
+	snow.emitting = w == "snow" and hi
+	snow_cover.visible = w == "snow"
+	var c := Vector3(tx + 8.0, 20.0, tz + 8.0)
+	rain.position = c
+	snow.position = c
+	var dim := 1.0
+	match w:
+		"cloud":
+			dim = 0.8
+		"rain":
+			dim = 0.62
+		"storm":
+			dim = 0.45
+		"snow":
+			dim = 0.75
+	sun.light_energy *= dim
+	env.ambient_light_energy *= lerp(1.0, 1.15, 1.0 - dim)
+	if w == "storm":
+		flash_t -= get_process_delta_time()
+		if flash_t <= 0.0:
+			flash_t = 4.0 + randf() * 7.0
+		if flash_t > 3.85 and flash_t < 4.0 or (flash_t > 3.6 and flash_t < 3.68):
+			env.ambient_light_energy = 2.2
+			env.background_color = Color("#d8e4ff")
+	if anim.has("plow") and anim.plow != null and is_instance_valid(anim.plow):
+		var pp := path_pos(PATROL, fposmod(t * 0.025 + 0.5, 1.0))
+		anim.plow.position = Vector3(pp[0], 0.0, pp[1])
+		anim.plow.rotation.y = pp[2]
 
 # ---------------------------------------------------------------- Feuerwehr
 const FW_X := -31.5
@@ -2191,6 +2545,7 @@ func build_fleet() -> void:
 		if int(main.S["escort"]) > 0 and j % max(1, 4 - int(main.S["escort"]) / 2) == 0:
 			var esc := B(0.3, 0.14, 0.3, "#3a6fd8", 0.2, 1.42, 0, tr)
 			esc.material_override = mat("#3a6fd8", 1.0, true)
+		head_pool(tr, 1.6)
 		dyn.add_child(tr)
 		var pid: String = {"v1": "light", "v2": "light", "v3": "mid", "v4": "heavy"}[k]
 		var u0 := float(j) / fleet.size()
@@ -2208,19 +2563,51 @@ func build_fleet() -> void:
 		build_railway()
 	if cnt("v", "v6") > 0:
 		var pl := Node3D.new()
-		B(3, 0.5, 0.5, "#f4f5f2", 0, 0, 0, pl)
-		B(0.8, 0.1, 3.4, "#dfe3e5", 0.2, 0, 0, pl)
-		B(0.5, 0.7, 0.1, "#0e8a7c", -1.4, 0.4, 0, pl)
+		# Transportflugzeug: Rumpf, Schulterdecker mit vier Triebwerken, T-Leitwerk
+		var fu := C(0.42, 0.42, 6.0, "#d9dde0", 0, 0, 0, pl, 12)
+		fu.rotation.z = PI / 2
+		var nose := C(0.0, 0.42, 0.9, "#d9dde0", 3.45, 0, 0, pl, 12)
+		nose.rotation.z = -PI / 2
+		var tailc := C(0.42, 0.12, 1.4, "#d9dde0", -3.7, 0.15, 0, pl, 12)
+		tailc.rotation.z = PI / 2
+		B(1.4, 0.08, 7.6, "#c9cdd0", 0.4, 0.38, 0, pl)
+		for ez in [-2.6, -1.4, 1.4, 2.6]:
+			var en := C(0.17, 0.17, 0.7, "#5a6266", 0.75, 0.22, ez, pl, 10)
+			en.rotation.z = PI / 2
+		B(0.9, 1.3, 0.08, "#0e5a8a", -3.9, 0.9, 0, pl)
+		B(0.7, 0.06, 2.4, "#c9cdd0", -4.1, 1.55, 0, pl)
+		B(4.5, 0.12, 0.86, "#0e5a8a", 0.3, -0.05, 0, pl)
+		B(0.3, 0.12, 0.6, "#22323d", 3.3, 0.18, 0, pl)
 		dyn.add_child(pl)
 		anim.plane = pl
 	if cnt("v", "v7") > 0:
-		B(3.2, 0.1, 3.2, "#5a6163", -29, 0.12, 5, dyn)
-		B(1.6, 0.11, 0.25, "#ffffff", -29, 0.14, 5, dyn)
+		B(3.4, 0.1, 3.4, "#5a6163", -29, 0.12, 5, dyn)
+		var hr := C(1.25, 1.25, 0.02, "#e8ecee", -29, 0.18, 5, dyn, 20)
+		C(1.1, 1.1, 0.03, "#5a6163", -29, 0.185, 5, dyn, 20)
+		B(0.25, 0.04, 1.2, "#ffffff", -29.4, 0.21, 5, dyn)
+		B(0.25, 0.04, 1.2, "#ffffff", -28.6, 0.21, 5, dyn)
+		B(0.8, 0.04, 0.25, "#ffffff", -29, 0.21, 5, dyn)
+		for c4 in [[-30.6, 3.4], [-27.4, 3.4], [-30.6, 6.6], [-27.4, 6.6]]:
+			var hl := B(0.15, 0.1, 0.15, "#3fd68a", c4[0], 0.22, c4[1], dyn)
+			hl.material_override = mat("#3fd68a", 1.0, true)
+		# Hubschrauber: Kabine, Heckausleger, Kufen, Haupt- und Heckrotor
 		var h := Node3D.new()
-		B(1.4, 0.6, 0.7, "#c8102e", 0, 0, 0, h)
-		anim.rotor = B(2.6, 0.04, 0.15, "#2b3436", 0, 0.4, 0, h)
-		h.position = Vector3(-29, 0.55, 5)
+		sphere(0.55, "#c8141e", 0.25, 0.0, 0, h, 12).scale = Vector3(1.5, 0.95, 0.85)
+		B(0.5, 0.35, 0.8, "#22323d", 0.85, 0.08, 0, h)
+		var boom := C(0.18, 0.08, 2.0, "#c8141e", -1.4, 0.15, 0, h, 8)
+		boom.rotation.z = PI / 2
+		B(0.35, 0.6, 0.06, "#c8141e", -2.35, 0.4, 0, h)
+		B(0.5, 0.06, 0.06, "#2b3436", -2.35, 0.45, 0.06, h)
+		B(0.12, 0.06, 0.06, "#2b3436", 0.2, 0.62, 0, h)
+		for sk in [-0.45, 0.45]:
+			B(1.8, 0.05, 0.06, "#2b3436", 0.2, -0.55, sk, h)
+			B(0.05, 0.3, 0.05, "#2b3436", 0.6, -0.42, sk, h)
+			B(0.05, 0.3, 0.05, "#2b3436", -0.2, -0.42, sk, h)
+		B(1.0, 0.04, 0.3, "#ffffff", 0.25, -0.05, 0.47, h)
+		anim.rotor = B(3.6, 0.04, 0.16, "#2b3436", 0.2, 0.68, 0, h)
+		h.position = Vector3(-29, 0.75, 5)
 		dyn.add_child(h)
+		anim["heli"] = h
 	if cnt("v", "v8") > 0:
 		B(4, 2.4, 3.2, "#3f6f7d", 11, 1.3, 5.2, dyn)
 		B(4.2, 0.2, 3.4, "#0e8a7c", 11, 2.6, 5.2, dyn)
@@ -2274,6 +2661,7 @@ const PATHS := {
 	"light": [[-2.8, 5.0], [6.0, 5.5], [14.5, 9.0], [14.5, 12.8], [42.0, 12.8]],
 	"mid": [[-2.8, 5.0], [2.0, 6.5], [2.0, 12.8], [2.0, 19.5], [-22.0, 19.5], [-22.0, 50.0]],
 	"heavy": [[-2.8, 5.0], [10.0, 6.5], [10.0, 12.8], [10.0, 19.5], [10.0, 50.0]],
+	"supply": [[70.0, 12.8], [14.5, 12.8], [14.5, 9.0], [8.0, 6.0], [-1.5, 5.2]],
 }
 var path_len := {}
 
@@ -2603,8 +2991,8 @@ func _process(dt: float) -> void:
 			anim.train.position.x = float(OS.get_environment("BB_TRAIN"))
 	if anim.plane:
 		var u := fposmod(t * 0.04, 1.0)
-		anim.plane.position = Vector3(-40 + u * 90, 12, -30 + u * 50)
-		anim.plane.rotation.y = -atan2(50, 90)
+		anim.plane.position = Vector3(-60 + u * 130, 14, -40 + u * 72)
+		anim.plane.rotation.y = -atan2(72, 130)
 	if anim.has("patrol") and is_instance_valid(anim.patrol):
 		var pp2 := path_pos(PATROL, fposmod(t * 0.02, 1.0))
 		anim.patrol.position = Vector3(pp2[0], 0.0, pp2[1])
@@ -2632,6 +3020,27 @@ func _process(dt: float) -> void:
 		anim.fork.rotation.y = 0.0 if fu < 1.0 else PI
 	if anim.rotor:
 		anim.rotor.rotation.y = t * 14.0
+	if anim.has("heli") and is_instance_valid(anim.heli):
+		# Flug zum Zweigwerk und zurück: Start, Steigflug, Strecke, Landung
+		var cy := fposmod(t / 70.0, 1.0)
+		var home := Vector3(-29, 0.75, 5)
+		var dest := Vector3(50, 9, -7)
+		var hp := home
+		if cy < 0.1:
+			hp = home + Vector3(0, cy / 0.1 * 8.0, 0)
+		elif cy < 0.45:
+			var f := (cy - 0.1) / 0.35
+			hp = (home + Vector3(0, 8, 0)).lerp(dest, f)
+			anim.heli.rotation.y = -atan2(dest.z - home.z, dest.x - home.x)
+		elif cy < 0.55:
+			hp = dest
+		elif cy < 0.9:
+			var f2 := (cy - 0.55) / 0.35
+			hp = dest.lerp(home + Vector3(0, 8, 0), f2)
+			anim.heli.rotation.y = -atan2(home.z - dest.z, home.x - dest.x)
+		else:
+			hp = home + Vector3(0, (1.0 - (cy - 0.9) / 0.1) * 8.0, 0)
+		anim.heli.position = hp
 	var ph: float = main.day_phase()
 	var night := 0.0
 	if ph > 0.55:
@@ -2641,8 +3050,10 @@ func _process(dt: float) -> void:
 	env.background_color = Color("#7ec8e3").lerp(Color("#0b1530"), night)
 	env.ambient_light_color = Color("#d8ecff").lerp(Color("#4a5ea8"), night)
 	env.ambient_light_energy = lerp(0.27, 0.2, night)
-	lamp_mat.emission_energy_multiplier = night * 3.0
-	win_mat.emission_energy_multiplier = night * 2.5
+	lamp_mat.emission_energy_multiplier = 0.2 + night * 3.5
+	win_mat.emission_energy_multiplier = night * 2.8
+	pool_mat.albedo_color.a = night * 0.42
+	weather_tick(night)
 	var al: bool = main.S["warn"] > 0.0
 	if anim.gate:
 		anim.gate.position.z = 12.8 if al else 15.4

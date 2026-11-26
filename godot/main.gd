@@ -140,15 +140,36 @@ const ROOMS := [
 	{id="pause", n="Pausenraum", d="+6 Zufriedenheit je Stufe.", c=10000.0},
 	{id="leit", n="Sicherheitszentrale", d="Bildschirmwand und Funk: +10 % Schutz je Stufe.", c=25000.0},
 	{id="buch", n="Buchhaltung", d="Spart Lohnkosten: −5 % Löhne je Stufe.", c=20000.0},
+	{id="it", n="IT-Abteilung", d="Wehrt Hackerangriffe ab: 22 % Abwehr je Stufe, ab Stufe 5 komplett.", c=30000.0},
+	{id="sani", n="Sanitätsraum", d="Betriebssanitäter: Arbeitsunfälle sind je Stufe deutlich kürzer.", c=12000.0},
 ]
 const STAFF := [
 	{id="arb", n="Produktionsmitarbeiter", d="Ohne sie steht jede Maschine still. Mehr Maschinen brauchen mehr Personal.", fee=50.0},
 	{id="fahr", n="Fahrer", d="Ohne Fahrer wird nichts ausgeliefert – und ohne Auslieferung kein Geld.", fee=60.0},
 	{id="wach", n="Wachleute", d="+4 % Schutz je Person (bis +100 %).", fee=80.0},
 	{id="putz", n="Reinigungskräfte", d="+2 % Herstellung je Person (bis +20 %), weniger Maschinenschäden. Braucht den Putzraum.", fee=40.0},
+	{id="spr", n="Springer", d="Springen ein, wenn Kollegen krank oder im Urlaub sind.", fee=55.0},
+	{id="azubi", n="Auszubildende", d="Günstig, zählen halb. Alle 4 Minuten wird einer zum Produktionsmitarbeiter.", fee=20.0},
+	{id="tech", n="Techniker", d="Warten die Maschinen: seltenere und kürzere Maschinenschäden.", fee=90.0},
 	{id="verw", n="Verwaltungskräfte", d="+3 % Auftragslohn je Person (bis +60 %), −2 % Löhne (bis −40 %). Braucht das Personalbüro.", fee=100.0},
 ]
 const PAY_PERIOD := 300.0
+const SHIFT_N := ["Einschicht", "Zweischicht", "Dreischicht (mit Nacht)"]
+const SHIFT_PROD := [0.7, 1.0, 1.3]
+const SHIFT_NEED := [0.6, 1.0, 1.5]
+const SHIFT_WAGE := [0.7, 1.0, 1.5]
+const UPG := [
+	{id="power", n="Notstromaggregat", d="Springt bei Stromausfall automatisch an: Stufe 1 hält 50 %, Stufe 2 85 %, Stufe 3 die volle Produktion.", c=5e4, k=8.0, mx=3},
+	{id="ctrl", n="Ausgangskontrolle", d="Durchleuchtung und Taschenkontrolle: erwischt Innentäter, die Scheine rausschmuggeln (30 % je Stufe).", c=3e4, k=6.0, mx=3},
+	{id="raw", n="Rohstofflager & Lieferverträge", d="Mehr Lieferungen von Metallrohlingen, Banknotenpapier und Farbe. Ohne Nachschub laufen die Linien langsamer.", c=2e4, k=5.0, mx=4},
+	{id="winter", n="Winterdienst", d="Streufahrzeuge räumen bei Schnee: Auslieferung bleibt fast voll.", c=1e5, k=6.0, mx=3},
+	{id="park", n="Mitarbeiter-Parkhaus", d="+3 Zufriedenheit je Stufe. Füllt sich sichtbar mit Autos.", c=2e5, k=6.0, mx=3},
+	{id="terr", n="Kantinen-Terrasse", d="+4 Zufriedenheit je Stufe. Tische und Sonnenschirme hinter der Verwaltung.", c=8e4, k=5.0, mx=2},
+	{id="bus", n="Museumsbusse & Schulklassen", d="+5 % Museumsbonus je Stufe. Busse und Schulklassen besuchen das Museum.", c=3e5, k=5.0, mx=3},
+]
+const LZB := ["Saarland", "Bremen", "Hamburg", "Mecklenburg-Vorpommern", "Thüringen", "Sachsen-Anhalt", "Brandenburg", "Schleswig-Holstein", "Berlin", "Sachsen", "Rheinland-Pfalz", "Niedersachsen", "Hessen", "Baden-Württemberg", "Bayern", "Nordrhein-Westfalen"]
+const SERIES := ["Banknotenserie „Europa III“", "Serie „Kulturerbe“", "Serie „Hybrid-Sicherheit“"]
+const WX := {"sun": ["Sonnig", 1.0], "cloud": ["Bewölkt", 1.0], "rain": ["Regen", 0.92], "storm": ["Gewitter", 0.85], "snow": ["Schnee", 0.75]}
 
 const C_PETROL := Color("#0e8a7c")
 const C_HEAD := Color("#0a4f4a")
@@ -293,7 +314,7 @@ func blank() -> Dictionary:
 	return {cash=25.0, stock=0.0, lv=0, total=0.0, life=0.0, l={"c1": 1}, v={"v1": 1}, t={}, f={}, g={"g1": 2},
 		rep=0, next=90.0, warn=0.0, gang=0, won=0, lost=0, log=[], ts=now(), mig1=1, orders=[], odone=0,
 		mgr={}, auto={}, sites={}, shred=0, gold=0, zins=2, fx=[], gt=0.0, ev_next=240.0, ev_cur="", daily_day=0, streak=0,
-		box_ts=0.0, ach={}, coins=[], fakes=0, gfx=2, rooms={}, staff={"arb": 1, "fahr": 1}, owed=0.0, payday=300.0, unpaid_until=0.0, paid_total=0.0, hunt_next=60.0, escort=0, museum=0, amb_next=300.0, comm_next=300.0, fire=0, fire_t=0.0, fire_next=480.0, fires=0}
+		box_ts=0.0, ach={}, coins=[], fakes=0, gfx=2, rooms={}, staff={"arb": 1, "fahr": 1}, owed=0.0, payday=300.0, unpaid_until=0.0, paid_total=0.0, hunt_next=60.0, escort=0, museum=0, amb_next=300.0, comm_next=300.0, fire=0, fire_t=0.0, fire_next=480.0, fires=0, shift=1, up={}, raw=100.0, wx="sun", wx_t=240.0, esc_share=0, series=0, series_t=0.0, ezb=0, hack_next=600.0, ins_next=480.0, sick_next=420.0, wear_next=360.0, acc_next=540.0, azubi_t=240.0}
 
 func load_game() -> void:
 	S = blank()
@@ -410,7 +431,7 @@ func apply_state(x: Dictionary) -> void:
 	var b := blank()
 	for k in x.keys():
 		b[k] = x[k]
-	for k in ["l", "v", "t", "f", "g", "mgr", "auto", "sites", "ach", "rooms", "staff"]:
+	for k in ["l", "v", "t", "f", "g", "mgr", "auto", "sites", "ach", "rooms", "staff", "up"]:
 		if typeof(b[k]) != TYPE_DICTIONARY:
 			b[k] = {}
 	if typeof(b["log"]) != TYPE_ARRAY:
@@ -503,16 +524,104 @@ func ach_n() -> int:
 	return S["ach"].size()
 
 func museum_m() -> float:
-	return 1.0 + 0.05 * float(S["rep"]) if int(S["museum"]) > 0 else 1.0
+	return (1.0 + 0.05 * float(S["rep"])) * (1.0 + 0.05 * up("bus")) if int(S["museum"]) > 0 else 1.0
+
+func up(id: String) -> int:
+	return int(S["up"].get(id, 0))
+
+func upg_cost(id: String) -> float:
+	for u in UPG:
+		if u.id == id:
+			return u.c * pow(u.k, up(id))
+	return 1e30
+
+func lzb_n() -> int:
+	var n := 0
+	for i in LZB.size():
+		if float(S["life"]) >= lzb_need(i):
+			n += 1
+	return n
+
+func lzb_need(i: int) -> float:
+	return 1e5 * pow(8.0, float(i))
+
+func ezb_m() -> float:
+	return 1.0 + 0.5 * int(S["ezb"])
+
+func shift_i() -> int:
+	return clamp(int(S["shift"]), 0, 2)
+
+## Rohstoffe: Verbrauch bei laufender Produktion, Nachschub je nach Lieferverträgen (in % pro Sekunde)
+func raw_supply() -> float:
+	return [0.22, 0.3, 0.4, 0.55, 0.75][min(up("raw"), 4)]
+
+func raw_use() -> float:
+	return 0.3 * SHIFT_PROD[shift_i()]
+
+func raw_m() -> float:
+	if float(S["raw"]) > 0.5:
+		return 1.0
+	return min(1.0, raw_supply() / raw_use())
+
+func is_winter() -> bool:
+	var m: int = Time.get_date_dict_from_system().month
+	return m == 11 or m == 12 or m == 1 or m == 2
+
+func wx_m() -> float:
+	var w: String = S["wx"]
+	if w == "snow":
+		return 0.75 + 0.08 * up("winter")
+	return float(WX.get(w, ["", 1.0])[1])
+
+func fx_active(k: String) -> bool:
+	for f in S["fx"]:
+		if f.k == k and f.until > S["gt"]:
+			return true
+	return false
+
+func absent_frac() -> float:
+	var a := 0.0
+	for f in S["fx"]:
+		if (f.k == "absent" or f.k == "acc") and f.until > S["gt"]:
+			a += float(f.m)
+	return min(0.6, a)
+
+## Wirksames Personal nach Krankheit, Urlaub, Unfällen; Springer füllen Lücken
+func eff_staff(id: String) -> float:
+	var a := absent_frac()
+	var arb: float = staff("arb") + 0.5 * staff("azubi")
+	var spr: float = staff("spr")
+	var miss_a: float = arb * a
+	var use_a: float = min(spr, miss_a)
+	if id == "arb":
+		return arb - miss_a + use_a
+	var fahr: float = staff("fahr")
+	var miss_f: float = fahr * a
+	return fahr - miss_f + min(spr - use_a, miss_f)
+
+func need_tech() -> int:
+	var m := machines_total()
+	return 0 if m == 0 else int(ceil(sqrt(float(m)) / 3.0))
+
+func cov_tech() -> float:
+	var n := need_tech()
+	return 1.0 if n == 0 else min(1.0, float(staff("tech")) / n)
+
+func esc_cost() -> float:
+	return deliv() * pay_m() * 0.05 * float(S["esc_share"]) / 100.0
+
+func series_cost() -> float:
+	return 2e8 * pow(25.0, float(S["series"]))
 
 func glob_m() -> float:
-	return (1.0 + 0.03 * int(S["gold"])) * (1.0 + 0.02 * ach_n()) * museum_m() * fx_m("prod") * cov_arb() * (1.0 + staff_prod_bonus()) * (1.0 + 0.04 * room("chef"))
+	return (1.0 + 0.03 * int(S["gold"])) * (1.0 + 0.02 * ach_n()) * museum_m() * fx_m("prod") * cov_arb() * (1.0 + staff_prod_bonus()) * (1.0 + 0.04 * room("chef")) * SHIFT_PROD[shift_i()] * raw_m() * (1.0 + 0.02 * lzb_n()) * ezb_m()
 
 func hall_m(note: bool) -> float:
 	var m := 1.0
 	if note and float(S.get("fire_t", 0.0)) > 0.0:
 		return 0.0
 	if note:
+		m *= 1.0 + 0.3 * int(S["series"])
 		m *= (1.5 if has_d("mgr", "note") else 1.0) * (2.0 if has_d("sites", "muenchen") else 1.0) * fx_m("note")
 	else:
 		m *= (1.5 if has_d("mgr", "coin") else 1.0) * (2.0 if has_d("sites", "mainz") else 1.0) * fx_m("coin")
@@ -552,7 +661,7 @@ func total_cap() -> int:
 	return 10 + 20 * room("umk")
 
 func morale() -> float:
-	var m := 55.0 + 8.0 * room("kantine") + 6.0 * room("pause")
+	var m := 55.0 + 8.0 * room("kantine") + 6.0 * room("pause") + 3.0 * up("park") + 4.0 * up("terr")
 	if float(S["gt"]) < float(S["unpaid_until"]):
 		m -= 40.0
 	return clamp(m, 0.0, 100.0)
@@ -575,7 +684,7 @@ func vans_total() -> int:
 ## Ohne Personal kein Verdienst: Maschinen brauchen Bedienpersonal, Fahrzeuge brauchen Fahrer
 func need_arb() -> int:
 	var m := machines_total()
-	return 0 if m == 0 else int(ceil(sqrt(float(m))))
+	return 0 if m == 0 else int(ceil(sqrt(float(m)) * SHIFT_NEED[shift_i()]))
 
 func need_fahr() -> int:
 	var v := vans_total()
@@ -583,11 +692,11 @@ func need_fahr() -> int:
 
 func cov_arb() -> float:
 	var n := need_arb()
-	return 1.0 if n == 0 else min(1.0, float(staff("arb")) / n)
+	return 1.0 if n == 0 else min(1.0, eff_staff("arb") / n)
 
 func cov_fahr() -> float:
 	var n := need_fahr()
-	return 1.0 if n == 0 else min(1.0, float(staff("fahr")) / n)
+	return 1.0 if n == 0 else min(1.0, eff_staff("fahr") / n)
 
 ## Zusatzbonus (Zufriedenheit, Reinigung) – nur wenn genug Personal da ist
 func staff_prod_bonus() -> float:
@@ -602,7 +711,7 @@ func wage_rate() -> float:
 		return 0.0
 	var base_w: float = income() * 0.1 + staff_total() * 0.05
 	var cut: float = min(0.4, 0.02 * staff("verw")) + 0.05 * room("buch")
-	return base_w * max(0.3, 1.0 - cut)
+	return base_w * max(0.3, 1.0 - cut) * SHIFT_WAGE[shift_i()]
 
 func zins() -> int:
 	return int(S["zins"])
@@ -650,7 +759,7 @@ func prod_calc() -> float:
 	return s
 
 func del_m() -> float:
-	return tm("del") * rep_m() * (2.0 if has_d("sites", "leipzig") else 1.0) * (1.5 if has_d("mgr", "fleet") else 1.0) * fx_m("del") * cov_fahr() * (1.0 + staff_del_bonus())
+	return tm("del") * rep_m() * (2.0 if has_d("sites", "leipzig") else 1.0) * (1.5 if has_d("mgr", "fleet") else 1.0) * fx_m("del") * cov_fahr() * (1.0 + staff_del_bonus()) * wx_m() * ezb_m()
 
 func deliv_calc() -> float:
 	var s := 0.0
@@ -1058,6 +1167,19 @@ func test_count() -> void:
 	arr.sort()
 	arr.reverse()
 	print("COUNT ", arr.slice(0, 12))
+
+func test_betr() -> void:
+	zsub = "betr"
+	render()
+	scroll.scroll_vertical = int(OS.get_environment("BB_SCROLL")) if OS.has_environment("BB_SCROLL") else 0
+
+func test_lead() -> void:
+	zsub = "mehr"
+	render()
+	call_deferred("_scroll_end")
+
+func _scroll_end() -> void:
+	scroll.scroll_vertical = 100000
 
 func test_pers() -> void:
 	zsub = "pers"
@@ -1926,7 +2048,7 @@ func do_reform() -> void:
 	var g := int(floor(sqrt(float(S["total"]) / 1e9)))
 	if g < 1:
 		return
-	var keep := {rep=int(S["rep"]) + g, life=S["life"], won=S["won"], lost=S["lost"], log=S["log"]}
+	var keep := {rep=int(S["rep"]) + g, life=S["life"], won=S["won"], lost=S["lost"], log=S["log"], ezb=int(S["ezb"]), staff_need_v1=true, fleet_auto_off=true}
 	apply_state(keep)
 	confirm_reset = ""
 	world.dirty = true
@@ -2078,6 +2200,7 @@ func update_ui() -> void:
 	update_extras()
 	if view == "zentrale":
 		update_staff_ui()
+		update_betrieb_ui()
 	if view == "bank":
 		if refs.has("box"):
 			var w := box_wait()
@@ -2228,6 +2351,7 @@ func extras_tick(dt: float) -> void:
 				add_log("Zahltag: Löhne konnten nicht voll gezahlt werden! Die Belegschaft ist 5 Minuten unzufrieden.", "bad")
 		S["owed"] = 0.0
 	fire_tick(dt)
+	ops_tick(dt)
 	# Ereignisse
 	if S["ev_cur"] == "" and S["warn"] <= 0.0:
 		S["ev_next"] = float(S["ev_next"]) - dt
@@ -2238,8 +2362,17 @@ func extras_tick(dt: float) -> void:
 				ev = EVENTS[5]
 			if morale() < 50.0 and randf() < 0.4:
 				ev = EVENTS[0]
-			S["ev_cur"] = ev.id
-			show_event(ev)
+			if ev.id == "power" and up("power") > 0:
+				var pm: float = [0.0, 0.5, 0.85, 1.0][up("power")]
+				if pm < 1.0:
+					S["fx"].append({k="prod", m=pm, until=float(S["gt"]) + 60.0})
+				add_log("Stromausfall! Das Notstromaggregat springt an – Produktion läuft mit %d %%." % int(pm * 100), "good")
+				world.dirty = true
+			elif ev.id == "break" and staff("tech") > 0:
+				machine_break(true)
+			else:
+				S["ev_cur"] = ev.id
+				show_event(ev)
 	# Gedenkmünzen
 	S["comm_next"] = float(S["comm_next"]) - dt
 	if S["comm_next"] <= 0.0 and prod() > 1.0:
@@ -2262,7 +2395,7 @@ func extras_tick(dt: float) -> void:
 	if S["amb_next"] <= 0.0:
 		S["amb_next"] = 200.0 + randf() * 220.0
 		if income() > 1.0:
-			var chance := 0.6 / (1.0 + int(S["escort"]))
+			var chance := 0.6 / (1.0 + int(S["escort"])) * (1.0 - 0.8 * float(S["esc_share"]) / 100.0)
 			if randf() < chance:
 				var loss: float = min(float(S["cash"]) * 0.12, income() * 45.0)
 				S["cash"] -= loss
@@ -2692,6 +2825,22 @@ func buy_extra(k: String) -> void:
 				S["cash"] -= room_cost(id)
 				S["rooms"][id] = room(id) + 1
 				add_log("%s auf Stufe %d ausgebaut." % [room_title(id), room(id)], "good")
+		"shift":
+			S["shift"] = clamp(int(id), 0, 2)
+			add_log("Schichtbetrieb: %s." % SHIFT_N[shift_i()], "good")
+		"esc":
+			S["esc_share"] = clamp(int(id), 0, 100)
+		"up":
+			for u in UPG:
+				if u.id == id and up(id) < u.mx and S["cash"] >= upg_cost(id):
+					S["cash"] -= upg_cost(id)
+					S["up"][id] = up(id) + 1
+					add_log("%s auf Stufe %d ausgebaut." % [u.n, up(id)], "good")
+		"series":
+			if float(S["series_t"]) <= 0.0 and int(S["series"]) < SERIES.size() and cnt("l", "s5") > 0 and S["cash"] >= series_cost():
+				S["cash"] -= series_cost()
+				S["series_t"] = 600.0
+				add_log("Entwicklung gestartet: %s." % SERIES[int(S["series"])], "good")
 		"fire":
 			if int(S["fire"]) < 5 and S["cash"] >= fire_cost():
 				S["cash"] -= fire_cost()
@@ -2707,6 +2856,174 @@ func buy_extra(k: String) -> void:
 	world.dirty = true
 	save_game()
 	render()
+
+# ---------------------------------------------------------------- Betrieb: Personal-Ausfälle, Wartung, Angriffe, Rohstoffe, Wetter
+func machine_break(auto: bool) -> void:
+	var built := []
+	for l in LINES:
+		if cnt("l", l.id) > 0:
+			built.append(l)
+	if built.is_empty():
+		return
+	var l: Dictionary = built[randi() % built.size()]
+	var dur: float = 180.0 * (1.0 - 0.85 * cov_tech())
+	S["fx"].append({k="line", id=l.id, m=0.0, until=float(S["gt"]) + dur})
+	add_log("Maschinenschaden an der %s – %s (%d s)." % [l.n, "die Techniker reparieren sofort" if auto else "Reparatur läuft", int(dur)], "bad" if dur > 60.0 else "good")
+	world.dirty = true
+
+func ops_tick(dt: float) -> void:
+	var gt: float = S["gt"]
+	# Rohstoffe
+	var use: float = raw_use() if machines_total() > 0 else 0.0
+	S["raw"] = clamp(float(S["raw"]) + (raw_supply() - use) * dt, 0.0, 100.0)
+	# Begleitschutz-Fahrplan kostet laufend
+	S["cash"] = max(0.0, float(S["cash"]) - esc_cost() * dt)
+	# Auszubildende werden fertig
+	if staff("azubi") > 0:
+		S["azubi_t"] = float(S["azubi_t"]) - dt
+		if S["azubi_t"] <= 0.0:
+			S["azubi_t"] = 240.0
+			S["staff"]["azubi"] = staff("azubi") - 1
+			S["staff"]["arb"] = staff("arb") + 1
+			add_log("Ausbildung bestanden: ein Azubi ist jetzt Produktionsmitarbeiter.", "good")
+	if income() <= 0.5:
+		return
+	# Krankheit und Urlaub
+	S["sick_next"] = float(S["sick_next"]) - dt
+	if S["sick_next"] <= 0.0:
+		S["sick_next"] = 420.0 + randf() * 360.0
+		var winter := is_winter()
+		var a: float = (0.15 if winter else 0.1) + randf() * 0.05
+		S["fx"].append({k="absent", m=a, until=gt + 180.0})
+		add_log("%s: %d %% der Belegschaft fehlen für 3 Minuten.%s" % ["Grippewelle" if winter else "Urlaubszeit", int(a * 100), " Springer helfen aus." if staff("spr") > 0 else " Springer würden einspringen."], "bad")
+	# Arbeitsunfall
+	S["acc_next"] = float(S["acc_next"]) - dt
+	if S["acc_next"] <= 0.0:
+		S["acc_next"] = 540.0 + randf() * 420.0
+		var dur: float = 120.0 / (1.0 + room("sani"))
+		S["fx"].append({k="acc", m=0.05, until=gt + dur})
+		add_log("Arbeitsunfall in der Halle! Der Rettungsdienst ist da, ein Teil der Schicht steht %d s still.%s" % [int(dur), "" if room("sani") > 0 else " Ein Sanitätsraum verkürzt das."], "bad")
+		world.dirty = true
+	# Verschleiß: ohne Techniker öfter Maschinenschäden
+	S["wear_next"] = float(S["wear_next"]) - dt
+	if S["wear_next"] <= 0.0:
+		S["wear_next"] = (300.0 + randf() * 300.0) * (1.0 + 2.0 * cov_tech())
+		machine_break(staff("tech") > 0)
+	# Hackerangriff
+	S["hack_next"] = float(S["hack_next"]) - dt
+	if S["hack_next"] <= 0.0:
+		S["hack_next"] = 600.0 + randf() * 480.0
+		if room("it") >= 5 or randf() < 0.22 * room("it"):
+			add_log("Hackerangriff auf das Zahlungssystem – die IT-Abteilung hat ihn abgewehrt.", "good")
+		else:
+			var loss: float = min(float(S["cash"]) * 0.02, income() * 60.0)
+			S["cash"] -= loss
+			add_log("Hackerangriff! Verlust: %s. Eine IT-Abteilung in der Verwaltung schützt davor." % fmt(loss), "bad")
+	# Innentäter
+	S["ins_next"] = float(S["ins_next"]) - dt
+	if S["ins_next"] <= 0.0:
+		S["ins_next"] = 480.0 + randf() * 480.0
+		if randf() < min(0.9, 0.3 * up("ctrl")):
+			var rew := income() * 15.0
+			earn(rew)
+			add_log("Ausgangskontrolle: Ein Mitarbeiter wollte Scheine rausschmuggeln und wurde erwischt. Belohnung: %s." % fmt(rew), "good")
+		elif up("ctrl") > 0 or randf() < 0.6:
+			var l2: float = min(float(S["cash"]) * 0.01, income() * 30.0)
+			S["cash"] -= l2
+			add_log("Innentäter: Scheine wurden aus dem Werk geschmuggelt. Verlust: %s." % fmt(l2), "bad")
+	# Wetter
+	S["wx_t"] = float(S["wx_t"]) - dt
+	if S["wx_t"] <= 0.0:
+		S["wx_t"] = 180.0 + randf() * 240.0
+		var opts := ["sun", "sun", "sun", "cloud", "cloud", "rain", "rain", "storm"]
+		if is_winter():
+			opts += ["snow", "snow", "snow", "cloud"]
+		var w: String = opts[randi() % opts.size()]
+		if w != S["wx"]:
+			S["wx"] = w
+			if w == "snow":
+				add_log("Es schneit! Auslieferung %d %%%s." % [int(wx_m() * 100), " – der Winterdienst streut" if up("winter") > 0 else ""], "bad")
+			elif w == "storm":
+				add_log("Gewitter zieht auf – die Transporter fahren langsamer.", "bad")
+			world.dirty = true
+	# Banknotenserie
+	if float(S["series_t"]) > 0.0:
+		S["series_t"] = float(S["series_t"]) - dt
+		if S["series_t"] <= 0.0:
+			S["series_t"] = 0.0
+			S["series"] = int(S["series"]) + 1
+			add_log("%s ist fertig entwickelt und geht in Druck: Druckhallen +30 %%!" % SERIES[int(S["series"]) - 1], "good")
+
+func do_ezb() -> void:
+	if confirm_reset != "ezb":
+		confirm_reset = "ezb"
+		render()
+		return
+	if int(S["rep"]) < 10:
+		return
+	var keep := {ezb=int(S["ezb"]) + 1, life=S["life"], won=S["won"], lost=S["lost"], log=S["log"], staff_need_v1=true, fleet_auto_off=true}
+	apply_state(keep)
+	confirm_reset = ""
+	world.dirty = true
+	add_log("Die Europäische Zentralbank übernimmt! EZB-Stern Nr. %d: dauerhaft +50 %% auf alles." % int(S["ezb"]), "good")
+	render()
+
+func choice_row(title: String, desc: String, opts: Array, cur, key: String) -> void:
+	var p := card()
+	var v := vb(8)
+	p.add_child(v)
+	v.add_child(lbl(title, 28, C_INK, true, true))
+	v.add_child(lbl(desc, 23, C_MUT, false, true))
+	var h := hb(6)
+	v.add_child(h)
+	for o in opts:
+		var val = o[0]
+		var b := btn(o[1], func(): buy_extra(key + ":" + str(val)), "main" if str(val) == str(cur) else "light", 0)
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		b.add_theme_font_size_override("font_size", 22)
+		h.add_child(b)
+
+func render_betrieb() -> void:
+	head_title("Betrieb", "Schichten, Rohstoffe, Wetter, Notstrom, Kontrollen und Entwicklung.")
+	choice_row("Schichtbetrieb", "Mehr Schichten = mehr Herstellung, aber mehr Personal und höhere Löhne (Nachtzuschlag). Jetzt: %s · Herstellung ×%s · Personalbedarf ×%s · Löhne ×%s" % [SHIFT_N[shift_i()], de_num(SHIFT_PROD[shift_i()], 1), de_num(SHIFT_NEED[shift_i()], 1), de_num(SHIFT_WAGE[shift_i()], 1)], [[0, "1 Schicht"], [1, "2 Schichten"], [2, "3 Schichten"]], shift_i(), "shift")
+	var wp := card()
+	var wv := vb(6)
+	wp.add_child(wv)
+	var wname: String = WX.get(S["wx"], ["?", 1.0])[0]
+	wv.add_child(lbl("Wetter: %s" % wname, 28, C_INK, true))
+	wv.add_child(lbl("Auslieferung %d %%. Regen und Gewitter bremsen die Transporter, Schnee (nur im Winter) am stärksten – außer mit Winterdienst." % int(wx_m() * 100), 23, C_MUT, false, true))
+	var rp := card()
+	var rv := vb(6)
+	rp.add_child(rv)
+	rv.add_child(lbl("Rohstoffe", 28, C_INK, true))
+	var rl := lbl("", 23, C_MUT, false, true)
+	rv.add_child(rl)
+	var rb := pbar(12)
+	rv.add_child(rb)
+	refs["raw"] = {desc=rl, bar=rb}
+	for u in UPG:
+		if u.id == "bus" and int(S["museum"]) == 0:
+			continue
+		var lv := up(u.id)
+		extra_card("%s · Stufe %d/%d" % [u.n, lv, u.mx], u.d, "up:" + u.id, "Voll" if lv >= u.mx else fmt(upg_cost(u.id)), S["cash"] >= upg_cost(u.id), lv >= u.mx)
+	choice_row("Begleitschutz-Fahrplan", "Anteil der Transporte, die zusätzlich von Polizei begleitet werden. Senkt Überfälle unterwegs (bis −80 %%), kostet laufend %s/s." % fmt(esc_cost()), [[0, "0 %"], [25, "25 %"], [50, "50 %"], [75, "75 %"], [100, "100 %"]], int(S["esc_share"]), "esc")
+	section("Entwicklung")
+	var sn := int(S["series"])
+	if float(S["series_t"]) > 0.0:
+		extra_card(SERIES[sn], "In Entwicklung: noch %s. Danach Druckhallen dauerhaft +30 %%." % dur_txt(float(S["series_t"])), "series", "Läuft …", false)
+	elif sn < SERIES.size():
+		var ok := cnt("l", "s5") > 0
+		extra_card(SERIES[sn], "Neue Banknotenserie mit besseren Sicherheitsmerkmalen entwickeln (10 Minuten). Danach Druckhallen dauerhaft +30 %%." + ("" if ok else " Braucht die 5-Euro-Linie."), "series", fmt(series_cost()), ok and S["cash"] >= series_cost())
+	else:
+		extra_card("Alle Banknotenserien entwickelt ✓", "Druckhallen +%d %%." % (30 * sn), "series", "Fertig", false, true)
+
+func update_betrieb_ui() -> void:
+	if refs.has("raw"):
+		var r: Dictionary = refs["raw"]
+		if not is_instance_valid(r.bar):
+			return
+		r.bar.value = float(S["raw"])
+		r.desc.text = "Lager %d %% · Nachschub %s %%/s · Verbrauch %s %%/s%s" % [int(S["raw"]), de_num(raw_supply(), 2), de_num(raw_use(), 2), " · LEER: Linien laufen nur mit %d %%!" % int(raw_m() * 100) if raw_m() < 1.0 else ""]
 
 # ---------------------------------------------------------------- Feuerwehr und Brände
 const FIRE_NAMES := ["keine Feuerwache", "Löschgruppe", "Feuerwache mit Drehleiter", "Hauptwache mit Rüstwagen", "Berufsfeuerwehr", "Werkfeuerwehr rund um die Uhr"]
@@ -2783,7 +3100,7 @@ func render_zentrale() -> void:
 	content.add_child(seg)
 	var sh := hb(6)
 	seg.add_child(sh)
-	for it in [["geb", "Gebäude"], ["pers", "Personal"], ["mehr", "Leitung & mehr"]]:
+	for it in [["geb", "Gebäude"], ["pers", "Personal"], ["betr", "Betrieb"], ["mehr", "Leitung"]]:
 		var key: String = it[0]
 		var on := zsub == key
 		var b := btn(it[1], func():
@@ -2798,6 +3115,9 @@ func render_zentrale() -> void:
 		return
 	if zsub == "pers":
 		render_staff()
+		return
+	if zsub == "betr":
+		render_betrieb()
 		return
 	head_title("Leitung & mehr", "Werksleiter, Standorte, Gold, Schredder, Leitzins und Museum.")
 	section("Werksleitung")
@@ -2850,6 +3170,30 @@ func render_zentrale() -> void:
 		mv.add_child(lbl("Ausstellungsstücke: %d Währungsreformen, %d Gedenkmünzen. Bonus: +%d %% auf alles." % [int(S["rep"]), S["coins"].size(), int(S["rep"]) * 5], 23, C_MUT, false, true))
 	else:
 		extra_card("Bundesbank-Museum", "Ab der ersten Währungsreform baubar. Jede Reform wird ausgestellt: +5 % Herstellung je Reform.", "museum", fmt(1e6), int(S["rep"]) >= 1 and S["cash"] >= 1e6)
+	section("Landeszentralbanken")
+	var ln := lzb_n()
+	var lp := card()
+	var lv2 := vb(6)
+	lp.add_child(lv2)
+	lv2.add_child(lbl("%d von %d Bundesländern versorgt · +%d %% Herstellung" % [ln, LZB.size(), ln * 2], 28, C_INK, true, true))
+	var names := PackedStringArray()
+	for i in LZB.size():
+		names.append(("✓ " if i < ln else "") + LZB[i])
+	lv2.add_child(lbl(" · ".join(names), 22, C_MUT, false, true))
+	if ln < LZB.size():
+		var lb := pbar(12)
+		lb.value = clamp(log(max(1.0, float(S["life"]))) / log(lzb_need(ln)) * 100.0, 0.0, 100.0)
+		lv2.add_child(lb)
+		lv2.add_child(lbl("Nächstes: %s ab %s insgesamt ausgeliefert." % [LZB[ln], fmt(lzb_need(ln))], 22, C_GOLD, false, true))
+	section("Europäische Zentralbank")
+	var ep := card()
+	var ev2 := vb(8)
+	ep.add_child(ev2)
+	ev2.add_child(lbl("EZB-Gründung · Sterne: %d" % int(S["ezb"]), 29, C_INK, true))
+	ev2.add_child(lbl("Der große Neustart: Alles wird zurückgesetzt, auch die Reputation. Dafür gibt jeder EZB-Stern dauerhaft +50 %% auf Herstellung und Auslieferung (jetzt ×%s). Ab 10 Reputation." % de_num(ezb_m(), 1), 23, C_MUT, false, true))
+	var eb := btn("Wirklich alles neu?" if confirm_reset == "ezb" else "EZB gründen", func(): do_ezb(), "red" if confirm_reset == "ezb" else "main", 0)
+	eb.disabled = int(S["rep"]) < 10
+	ev2.add_child(eb)
 
 func render_rooms() -> void:
 	head_title("Verwaltungsgebäude", "Baue die Räume der Bundesbank aus. Du siehst sie im 3D-Werk oben hinter den Hallen.")
@@ -2925,6 +3269,12 @@ func update_staff_ui() -> void:
 				e = "Benötigt: %d · Fahrzeuge fahren zu %d %%" % [need_fahr(), int(cov_fahr() * 100)]
 			"wach":
 				e = "Schutz +%d %%" % int(min(1.0, 0.04 * n) * 100)
+			"spr":
+				e = "Fehlen gerade: %d %% · Springer füllen die Lücke" % int(absent_frac() * 100)
+			"azubi":
+				e = ("Nächster Abschluss in %s" % dur_txt(float(S["azubi_t"]))) if n > 0 else "Zählen halb als Produktionsmitarbeiter"
+			"tech":
+				e = "Benötigt: %d · Wartung %d %%" % [need_tech(), int(cov_tech() * 100)]
 			"putz":
 				e = "Herstellung +%d %%" % int(min(0.2, 0.02 * n) * 100) if room("putz") > 0 else "Erst den Putzraum bauen"
 			"verw":
