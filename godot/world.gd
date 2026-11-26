@@ -24,6 +24,45 @@ var moved := 0.0
 var pinch := 0.0
 var dragging := false
 var last_build := -10.0
+var last_sig := ""
+var dirty_auto := false
+
+## Alles, was im 3D-Werk sichtbar ist, als Text – nur wenn er sich ändert, wird neu aufgebaut
+func visual_sig() -> String:
+	var S: Dictionary = main.S
+	var parts := PackedStringArray()
+	var fz: int = main.feat_n()
+	for l in main.LINES:
+		var c := cnt("l", l.id)
+		var locked: bool = l.has("req") and fz < int(l.req)
+		var wk: int = min(5, 1 + int(log(max(c, 1)) / log(2.0) / 1.4))
+		var nit: int = min(10, 3 + int(log(c + 1) / log(2.0)))
+		parts.append("%d,%d,%d,%d,%d" % [min(c, 10), main.ms_n(c), wk, nit, int(locked)])
+	parts.append("lv%d" % min(int(S["lv"]), 6))
+	for k in ["t8", "t11", "t12"]:
+		parts.append(k + str(int(main.has_flag("t", k))))
+	var caps := {"g1": 8, "g2": 8, "g3": 1, "g4": 1, "g5": 1, "g6": 3, "g7": 1, "g8": 4, "g9": 4, "g10": 1}
+	for k in caps.keys():
+		parts.append(k + str(min(cnt("g", k), caps[k])))
+	var tot := 0
+	for k in ["v1", "v2", "v3", "v4"]:
+		tot += cnt("v", k)
+	parts.append("fleet%d" % min(tot, 12))
+	for k in ["v1", "v2", "v3", "v4"]:
+		parts.append(k + str(int(cnt("v", k) > 0)))
+	for k in ["v5", "v6", "v7", "v8"]:
+		parts.append(k + str(int(cnt("v", k) > 0)))
+	parts.append("gold%d" % min(int(S["gold"]), 60))
+	parts.append("sh%d" % int(S["shred"]))
+	parts.append("mu%d,%d" % [int(S["museum"]), int(S["rep"]) + S["coins"].size()])
+	parts.append("es%d" % int(S["escort"]))
+	parts.append(str(S["sites"].keys()))
+	parts.append(str(S["mgr"].keys()))
+	var act := ""
+	for o in S["orders"]:
+		act += "1" if o.get("active", false) else "0"
+	parts.append(act)
+	return "|".join(parts)
 var env: Environment
 var sun: DirectionalLight3D
 var lamps := []
@@ -434,6 +473,8 @@ func build() -> void:
 	build_extras()
 	build_security()
 	build_fleet()
+	var tb := Time.get_ticks_usec()
+	var nodes_before := dyn.get_child_count()
 	var skip := {}
 	for p in anim.pist:
 		skip[p.m] = true
@@ -448,7 +489,9 @@ func build() -> void:
 		merge_deep(g.p)
 	for tr in anim.trucks:
 		merge_deep(tr.t)
-	last_pile = -1
+	if OS.has_environment("BB_PERF"):
+		print("MERGE_MS %.1f children=%d" % [(Time.get_ticks_usec() - tb) / 1000.0, nodes_before])
+	build_piles()
 
 # ---------------------------------------------------------------- Tresorgebäude mit Tresortür
 func build_vault(lvl: int) -> void:
@@ -618,7 +661,7 @@ func pallet(pos: Vector3, kind: int, p: Node3D) -> void:
 				var bz2 := pos.z - 0.22 + int(k / 2) * 0.44
 				B(0.5, 0.15, 0.4, col, bx2, pos.y + 0.2 + lay * 0.16, bz2, p)
 				B(0.12, 0.152, 0.402, "#f4f1e6", bx2, pos.y + 0.2 + lay * 0.16, bz2, p)
-		B(1.1, 0.5, 0.92, "#e8f4ff", pos.x, pos.y + 0.37, pos.z, p, 0.28)
+		B(1.08, 0.04, 0.06, "#ffffff", pos.x, pos.y + 0.54, pos.z, p)
 
 func build_extras() -> void:
 	var S: Dictionary = main.S
@@ -830,21 +873,32 @@ func build_fleet() -> void:
 		B(4, 2.4, 3.2, "#3f6f7d", 11, 1.3, 5.2, dyn)
 		B(4.2, 0.2, 3.4, "#0e8a7c", 11, 2.6, 5.2, dyn)
 
-func piles() -> void:
+var pile_slots := []
+
+## Paletten einmal pro Ausbau bauen, danach nur ein- und ausblenden
+func build_piles() -> void:
+	pile_slots = []
 	var lvl: int = min(int(main.S["lv"]), 6)
 	var all := store_slots(lvl)
-	var slots: int = all.size()
+	for i in range(all.size()):
+		var n := Node3D.new()
+		dyn.add_child(n)
+		pallet(all[i], i, n)
+		merge_deep(n)
+		n.visible = false
+		pile_slots.append(n)
+	last_pile = -1
+
+func piles() -> void:
+	var slots: int = pile_slots.size()
+	if slots == 0:
+		return
 	var n := int(ceil(min(1.0, float(main.S["stock"]) / main.cap()) * slots))
 	if n == last_pile:
 		return
 	last_pile = n
-	if pile_node:
-		pile_node.queue_free()
-	pile_node = Node3D.new()
-	add_child(pile_node)
-	for i in range(n):
-		pallet(all[i], i, pile_node)
-	merge_children(pile_node, {})
+	for i in range(slots):
+		pile_slots[i].visible = i < n
 
 # ---------------------------------------------------------------- Wege
 const TRUCK_PATH := [[-2.8, 5.0], [6.0, 5.5], [14.5, 9.0], [14.5, 12.8], [42.0, 12.8]]
@@ -895,37 +949,41 @@ func vc_material() -> StandardMaterial3D:
 func mergeable(m: Material) -> bool:
 	return m is StandardMaterial3D and not m.emission_enabled and m.transparency == BaseMaterial3D.TRANSPARENCY_DISABLED and m.metallic < 0.5
 
+var deidx := {}
+
+## Ecken und Normalen eines Grundkörpers ohne Index (einmal pro Form berechnet)
+func flat_arrays(mesh: Mesh) -> Array:
+	if deidx.has(mesh):
+		return deidx[mesh]
+	var st := SurfaceTool.new()
+	st.create_from(mesh, 0)
+	st.deindex()
+	var arr := st.commit_to_arrays()
+	var res := [arr[Mesh.ARRAY_VERTEX], arr[Mesh.ARRAY_NORMAL]]
+	deidx[mesh] = res
+	return res
+
 ## Baut aus vielen Teilen ein Mesh: einfarbige Teile mit Vertex-Farben, Sonderteile je Material
 func bake_into(root: Node3D, items: Array) -> void:
 	var verts := PackedVector3Array()
 	var norms := PackedVector3Array()
 	var cols := PackedColorArray()
-	var idx := PackedInt32Array()
 	var shadow := false
 	var others := {}
 	var order := []
+	var tmpc := PackedColorArray()
 	for it in items:
 		var mesh: Mesh = it[0]
 		var xf: Transform3D = it[1]
 		var m: Material = it[3]
 		if mergeable(m):
-			var arr := mesh.surface_get_arrays(0)
-			var v: PackedVector3Array = arr[Mesh.ARRAY_VERTEX]
-			var n: PackedVector3Array = arr[Mesh.ARRAY_NORMAL]
-			var ix: PackedInt32Array = arr[Mesh.ARRAY_INDEX]
-			var base := verts.size()
-			var col: Color = m.albedo_color
-			var basis := xf.basis
-			for k in range(v.size()):
-				verts.append(xf * v[k])
-				norms.append((basis * n[k]).normalized())
-				cols.append(col)
-			if ix.size() > 0:
-				for k in range(ix.size()):
-					idx.append(base + ix[k])
-			else:
-				for k in range(v.size()):
-					idx.append(base + k)
+			var fa := flat_arrays(mesh)
+			var v: PackedVector3Array = fa[0]
+			verts.append_array(xf * v)
+			norms.append_array(Transform3D(xf.basis, Vector3.ZERO) * (fa[1] as PackedVector3Array))
+			tmpc.resize(v.size())
+			tmpc.fill(m.albedo_color)
+			cols.append_array(tmpc)
 			if it[4]:
 				shadow = true
 		else:
@@ -946,7 +1004,6 @@ func bake_into(root: Node3D, items: Array) -> void:
 		arrays[Mesh.ARRAY_VERTEX] = verts
 		arrays[Mesh.ARRAY_NORMAL] = norms
 		arrays[Mesh.ARRAY_COLOR] = cols
-		arrays[Mesh.ARRAY_INDEX] = idx
 		var am := ArrayMesh.new()
 		am.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
 		var out := MeshInstance3D.new()
@@ -1075,10 +1132,19 @@ func handle_input(ev: InputEvent) -> void:
 # ---------------------------------------------------------------- Animation
 func _process(dt: float) -> void:
 	t += dt
+	if dirty_auto and t - last_build > 20.0:
+		dirty_auto = false
+		dirty = true
 	if dirty and t - last_build > 1.5:
 		dirty = false
-		last_build = t
-		build()
+		var sig := visual_sig()
+		if sig != last_sig:
+			last_sig = sig
+			last_build = t
+			var t0 := Time.get_ticks_usec()
+			build()
+			if OS.has_environment("BB_PERF"):
+				print("BUILD_MS %.1f" % ((Time.get_ticks_usec() - t0) / 1000.0))
 	fit()
 	piles()
 	sp_t -= dt

@@ -958,6 +958,8 @@ func _process(dt: float) -> void:
 	if ui_t > 0.25:
 		ui_t = 0.0
 		update_ui()
+	if OS.has_environment("BB_PERF") and Engine.get_process_frames() % 120 == 0:
+		print("PROC_MS %.2f" % (Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0))
 	if OS.has_environment("BB_PERF") and shot_t > 5.0 and Engine.get_process_frames() % 5 == 0:
 		var vrid: RID = world.get_viewport().get_viewport_rid()
 		print("PERF world_draws=%d world_objs=%d nodes=%d" % [RenderingServer.viewport_get_render_info(vrid, RenderingServer.VIEWPORT_RENDER_INFO_TYPE_VISIBLE, RenderingServer.VIEWPORT_RENDER_INFO_DRAW_CALLS_IN_FRAME), RenderingServer.viewport_get_render_info(vrid, RenderingServer.VIEWPORT_RENDER_INFO_TYPE_VISIBLE, RenderingServer.VIEWPORT_RENDER_INFO_OBJECTS_IN_FRAME), Performance.get_monitor(Performance.OBJECT_NODE_COUNT)])
@@ -2090,7 +2092,7 @@ func managers_tick() -> void:
 			bought = true
 	if bought:
 		invalidate()
-		world.dirty = true
+		world.dirty_auto = true
 
 func ach_done(id: String) -> bool:
 	match id:
