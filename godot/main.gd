@@ -87,7 +87,7 @@ const COUNTRIES := [
 const ORDER_SHARE := 0.2
 const MGR := [
 	{id="coin", n="Leiterin Münzhalle", d="Münzhalle ×1,5 · kauft Pressen nach", c=5000.0},
-	{id="fleet", n="Fuhrparkchef", d="Auslieferung ×1,5 · kauft Fahrzeuge nach", c=20000.0},
+	{id="fleet", n="Fuhrparkchef", d="Auslieferung ×1,5 · kauft auf Wunsch Fahrzeuge nach (Automatik standardmäßig aus)", c=20000.0},
 	{id="sec", n="Sicherheitschefin", d="Schutz ×1,25 · kauft Schutz nach, wenn das Risiko über 40 % steigt", c=50000.0},
 	{id="note", n="Leiter Druckhalle", d="Druckhalle ×1,5 · kauft Druckwerke nach", c=5e6},
 ]
@@ -418,6 +418,9 @@ func apply_state(x: Dictionary) -> void:
 	for k in ["orders", "fx", "coins"]:
 		if typeof(b[k]) != TYPE_ARRAY:
 			b[k] = []
+	if not b.has("fleet_auto_off"):
+		b["auto"]["fleet"] = false
+		b["fleet_auto_off"] = true
 	S = b
 
 func save_game() -> void:
@@ -1589,6 +1592,9 @@ func render_list() -> void:
 	else:
 		head_title(HEAD[view][0], HEAD[view][1])
 	if view == "deliv":
+		if has_d("mgr", "fleet"):
+			var fa: bool = S["auto"].get("fleet", false)
+			extra_card("Automatischer Fahrzeugkauf", "Der Fuhrparkchef kauft selbstständig Fahrzeuge nach." if fa else "Aus – Fahrzeuge kaufst du nur selbst.", "auto:fleet", "An – ausschalten" if fa else "Aus – einschalten", true)
 		var el := int(S["escort"])
 		extra_card("Begleitschutz Stufe %d/6" % el, "Polizei begleitet die Geldtransporter. Senkt die Gefahr von Überfällen unterwegs.", "escort", "Voll" if el >= 6 else fmt(escort_cost()), S["cash"] >= escort_cost(), el >= 6)
 	if view == "guard":
@@ -2224,7 +2230,7 @@ func managers_tick() -> void:
 			S["cash"] -= best_c
 			S["l"][best.id] = cnt("l", best.id) + 1
 			bought = true
-	if has_d("mgr", "fleet") and S["auto"].get("fleet", true) and prod() > deliv() * 1.05:
+	if has_d("mgr", "fleet") and S["auto"].get("fleet", false) and prod() > deliv() * 1.05:
 		var bv := {}
 		var bs := 0.0
 		for v in VAN:
@@ -2586,7 +2592,7 @@ func buy_extra(k: String) -> void:
 				if m.id == id and not has_d("mgr", id) and S["cash"] >= m.c:
 					S["cash"] -= m.c
 					S["mgr"][id] = true
-					S["auto"][id] = true
+					S["auto"][id] = id != "fleet"
 					add_log("Eingestellt: %s." % m.n, "good")
 		"auto":
 			S["auto"][id] = not S["auto"].get(id, true)
@@ -2678,7 +2684,7 @@ func render_zentrale() -> void:
 	section("Werksleitung")
 	for m in MGR:
 		if has_d("mgr", m.id):
-			var on: bool = S["auto"].get(m.id, true)
+			var on: bool = S["auto"].get(m.id, m.id != "fleet")
 			extra_card(m.n + " ✓", m.d, "auto:" + m.id, "Automatik an" if on else "Automatik aus", true)
 		else:
 			extra_card(m.n, m.d, "mgr:" + m.id, "Einstellen " + fmt(m.c), S["cash"] >= m.c)
