@@ -205,64 +205,73 @@ const HAIR := ["#3b2a1e", "#1b1b1b", "#8a5a2b", "#c9a15a", "#5a3a22"]
 func person(col: String, p: Node3D, helmet := false, style := "") -> Node3D:
 	var g := Node3D.new()
 	var skin: String = SKIN[randi() % SKIN.size()]
-	var pants := "#2b3436"
+	var hair: String = HAIR[randi() % HAIR.size()]
+	var pants := "#2f3a44"
+	var top := col
 	if style == "guard" or style == "police":
 		pants = "#1c2a40"
+		top = "#1f3a66" if style == "police" else "#26344a"
 	elif style == "soldier":
-		pants = "#3f4a2a"
+		pants = "#4a5634"
+		top = "#4b5a32"
 	elif style == "manager":
-		pants = "#2a2f3a"
-	# Beine und Schuhe
-	B(0.13, 0.4, 0.15, pants, -0.08, 0.26, 0, g)
-	B(0.13, 0.4, 0.15, pants, 0.08, 0.26, 0, g)
-	B(0.14, 0.06, 0.21, "#141414", -0.08, 0.03, 0.03, g)
-	B(0.14, 0.06, 0.21, "#141414", 0.08, 0.03, 0.03, g)
-	# Oberkörper und Arme
-	B(0.36, 0.4, 0.22, col, 0, 0.66, 0, g)
-	B(0.1, 0.38, 0.12, col, -0.24, 0.65, 0, g)
-	B(0.1, 0.38, 0.12, col, 0.24, 0.65, 0, g)
-	B(0.09, 0.08, 0.1, skin, -0.24, 0.42, 0, g)
-	B(0.09, 0.08, 0.1, skin, 0.24, 0.42, 0, g)
-	B(0.36, 0.05, 0.23, "#1a1a1a", 0, 0.48, 0, g)
-	# Kopf, Gesicht
-	B(0.12, 0.06, 0.12, skin, 0, 0.89, 0, g)
-	B(0.25, 0.26, 0.24, skin, 0, 1.04, 0, g)
-	B(0.04, 0.035, 0.01, "#1a1a1a", -0.06, 1.06, 0.123, g)
-	B(0.04, 0.035, 0.01, "#1a1a1a", 0.06, 1.06, 0.123, g)
-	B(0.08, 0.02, 0.01, "#8a4a3a", 0, 0.98, 0.123, g)
+		pants = "#262b35"
+		top = "#2a2f3a"
+	elif style == "robber":
+		pants = "#1e1e22"
+		top = "#2a2a2e"
+	# Beine (leicht konisch), Schuhe
+	C(0.062, 0.072, 0.44, pants, -0.08, 0.28, 0, g, 6)
+	C(0.062, 0.072, 0.44, pants, 0.08, 0.28, 0, g, 6)
+	B(0.12, 0.07, 0.22, "#17191b", -0.08, 0.035, 0.03, g)
+	B(0.12, 0.07, 0.22, "#17191b", 0.08, 0.035, 0.03, g)
+	# Hüfte, Gürtel, Oberkörper (breite Schultern)
+	B(0.29, 0.12, 0.19, pants, 0, 0.53, 0, g)
+	B(0.3, 0.04, 0.2, "#151515", 0, 0.6, 0, g)
+	C(0.17, 0.135, 0.36, top, 0, 0.79, 0, g, 8)
+	sphere(0.075, top, -0.17, 0.93, 0, g, 6)
+	sphere(0.075, top, 0.17, 0.93, 0, g, 6)
+	# Arme und Hände
+	C(0.05, 0.042, 0.4, top, -0.215, 0.74, 0, g, 6)
+	C(0.05, 0.042, 0.4, top, 0.215, 0.74, 0, g, 6)
+	sphere(0.045, skin, -0.215, 0.52, 0, g, 6)
+	sphere(0.045, skin, 0.215, 0.52, 0, g, 6)
+	# Hals, Kopf, Gesicht
+	C(0.05, 0.055, 0.08, skin, 0, 1.0, 0, g, 6)
+	sphere(0.125, skin, 0, 1.13, 0, g, 8)
+	B(0.03, 0.025, 0.01, "#1a1a1a", -0.045, 1.15, 0.118, g)
+	B(0.03, 0.025, 0.01, "#1a1a1a", 0.045, 1.15, 0.118, g)
+	B(0.03, 0.04, 0.03, skin, 0, 1.11, 0.125, g)
+	B(0.06, 0.015, 0.01, "#9a5444", 0, 1.06, 0.116, g)
 	match style:
 		"police":
-			B(0.37, 0.41, 0.23, "#1f3a66", 0, 0.66, 0, g)
-			B(0.11, 0.39, 0.13, "#1f3a66", -0.24, 0.65, 0, g)
-			B(0.11, 0.39, 0.13, "#1f3a66", 0.24, 0.65, 0, g)
-			B(0.37, 0.07, 0.235, "#e8ecee", 0, 0.76, 0.003, g)
-			B(0.2, 0.05, 0.01, "#ffd21a", 0, 0.68, 0.122, g)
-			B(0.28, 0.08, 0.28, "#1f3a66", 0, 1.21, 0, g)
-			B(0.29, 0.03, 0.29, "#ffd21a", 0, 1.18, 0, g)
-			B(0.27, 0.025, 0.11, "#111111", 0, 1.17, 0.17, g)
-			B(0.36, 0.05, 0.23, "#111111", 0, 0.5, 0, g)
+			C(0.172, 0.172, 0.06, "#e8ecee", 0, 0.84, 0, g, 8)
+			B(0.12, 0.04, 0.01, "#ffd21a", 0, 0.9, 0.155, g)
+			C(0.13, 0.13, 0.08, "#1f3a66", 0, 1.26, 0, g, 8)
+			C(0.135, 0.135, 0.025, "#ffd21a", 0, 1.23, 0, g, 8)
+			B(0.2, 0.02, 0.09, "#111111", 0, 1.22, 0.12, g)
 		"guard":
-			B(0.27, 0.07, 0.27, "#16233a", 0, 1.2, 0, g)
-			B(0.27, 0.025, 0.1, "#16233a", 0, 1.17, 0.16, g)
-			B(0.37, 0.12, 0.23, "#c9d2d5", 0, 0.72, 0.005, g)
+			C(0.125, 0.125, 0.07, "#16233a", 0, 1.25, 0, g, 8)
+			B(0.2, 0.02, 0.09, "#16233a", 0, 1.22, 0.12, g)
+			B(0.1, 0.06, 0.01, "#c9d2d5", 0.07, 0.86, 0.15, g)
 		"soldier":
-			B(0.29, 0.1, 0.29, "#3f4a2a", 0, 1.2, 0, g)
-			B(0.37, 0.3, 0.24, "#4b5a32", 0, 0.68, 0, g)
+			sphere(0.145, "#3f4a2a", 0, 1.17, -0.01, g, 8)
+			C(0.165, 0.165, 0.2, "#56653a", 0, 0.8, 0, g, 8)
 		"manager":
-			B(0.27, 0.07, 0.25, HAIR[randi() % HAIR.size()], 0, 1.19, -0.01, g)
-			B(0.07, 0.3, 0.01, "#c8102e", 0, 0.68, 0.115, g)
-			B(0.37, 0.4, 0.2, "#2a2f3a", 0, 0.66, -0.02, g)
+			sphere(0.13, hair, 0, 1.17, -0.025, g, 8)
+			B(0.1, 0.18, 0.01, "#f2f2f2", 0, 0.88, 0.148, g)
+			B(0.035, 0.17, 0.012, "#c8102e", 0, 0.86, 0.152, g)
 		"robber":
-			B(0.27, 0.28, 0.26, "#111111", 0, 1.05, 0, g)
-			B(0.18, 0.05, 0.01, "#f1c9a5", 0, 1.07, 0.132, g)
+			sphere(0.13, "#111111", 0, 1.135, 0, g, 8)
+			B(0.15, 0.04, 0.01, "#f1c9a5", 0, 1.15, 0.125, g)
 		_:
 			if helmet:
-				B(0.3, 0.1, 0.3, "#ffd21a", 0, 1.21, 0, g)
-				B(0.3, 0.02, 0.1, "#ffd21a", 0, 1.17, 0.17, g)
-				B(0.37, 0.04, 0.23, "#e8ecee", 0, 0.75, 0.003, g)
-				B(0.37, 0.04, 0.23, "#e8ecee", 0, 0.62, 0.003, g)
+				sphere(0.14, "#ffd21a", 0, 1.18, 0, g, 8)
+				B(0.24, 0.02, 0.1, "#ffd21a", 0, 1.17, 0.14, g)
+				C(0.172, 0.17, 0.05, "#e8ecee", 0, 0.86, 0, g, 8)
+				C(0.168, 0.16, 0.05, "#e8ecee", 0, 0.72, 0, g, 8)
 			else:
-				B(0.27, 0.07, 0.25, HAIR[randi() % HAIR.size()], 0, 1.19, -0.01, g)
+				sphere(0.13, hair, 0, 1.17, -0.025, g, 8)
 	p.add_child(g)
 	return g
 
@@ -1095,12 +1104,43 @@ func build_extras() -> void:
 			sch.scale = Vector3(1, 0.6, 1)
 	# Museum (außerhalb des Zauns, links)
 	if int(S["museum"]) > 0:
-		B(6, 0.4, 4, "#e9e2d0", -31, 0.2, -8, dyn)
+		# Vorplatz mit Pflaster, Bänken und Laternen
+		B(9.5, 0.06, 8.0, "#9a958a", -31.0, 0.08, -8.0, dyn)
 		for k in range(5):
-			C(0.25, 0.25, 2.2, "#f4efe2", -28.6, 1.5, -10.4 + k * 1.2, dyn, 10)
-		B(6.2, 0.5, 4.2, "#e9e2d0", -31, 2.85, -8, dyn)
-		var roof := C(0.0, 3.3, 1.2, "#c9b27a", -31, 3.7, -8, dyn, 4)
+			B(9.5, 0.065, 0.05, "#878276", -31.0, 0.085, -11.6 + k * 1.8, dyn)
+		# Sockel mit Stufen
+		B(6.4, 0.25, 5.2, "#b5aa90", -31.3, 0.2, -8.0, dyn)
+		B(0.5, 0.15, 4.0, "#b5aa90", -27.85, 0.15, -8.0, dyn)
+		B(0.5, 0.3, 4.0, "#b5aa90", -28.1, 0.22, -8.0, dyn)
+		# Baukörper in Sandstein mit hohen Fenstern
+		B(4.6, 2.7, 4.6, "#bfae8b", -31.9, 1.65, -8.0, dyn)
+		for k in range(3):
+			B(0.6, 1.4, 0.05, "#3a4a55", -33.3 + k * 1.4, 1.6, -10.32, dyn)
+			B(0.6, 1.4, 0.05, "#3a4a55", -33.3 + k * 1.4, 1.6, -5.68, dyn)
+		B(0.06, 1.9, 1.2, "#5b3e28", -29.58, 1.25, -8.0, dyn)
+		# Säulenhalle
+		for k in range(6):
+			var zc := -10.3 + k * 0.92
+			C(0.17, 0.2, 2.5, "#d8cdb3", -28.5, 1.6, zc, dyn, 10)
+			B(0.46, 0.12, 0.46, "#c9bd9f", -28.5, 0.41, zc, dyn)
+			B(0.46, 0.12, 0.46, "#c9bd9f", -28.5, 2.9, zc, dyn)
+		B(6.6, 0.4, 5.4, "#c7b998", -31.2, 3.15, -8.0, dyn)
+		B(6.7, 0.1, 5.5, "#a99c80", -31.2, 3.38, -8.0, dyn)
+		var roof := C(0.0, 3.7, 1.1, "#4a7564", -31.2, 3.98, -8.0, dyn, 4)
 		roof.rotation.y = PI / 4
+		roof.scale = Vector3(1.0, 1.0, 0.82)
+		# Fahnen, Bänke, Laternen
+		for zf in [-11.4, -4.6]:
+			C(0.04, 0.04, 3.2, "#c9cdd0", -27.0, 1.7, zf, dyn, 6)
+			B(0.03, 0.55, 0.9, "#0e3a8a", -27.0, 2.95, zf + 0.47, dyn)
+		for zb in [-10.6, -5.4]:
+			B(0.4, 0.06, 1.3, "#6b4a2e", -26.6, 0.48, zb, dyn)
+			B(0.08, 0.35, 1.3, "#6b4a2e", -26.42, 0.7, zb, dyn)
+			B(0.36, 0.4, 0.06, "#2b3033", -26.6, 0.27, zb - 0.55, dyn)
+			B(0.36, 0.4, 0.06, "#2b3033", -26.6, 0.27, zb + 0.55, dyn)
+		for zl in [-12.0, -4.0]:
+			C(0.05, 0.07, 2.4, "#2b3033", -34.8, 1.25, zl, dyn, 6)
+			sphere(0.16, "#fff2c0", -34.8, 2.55, zl, dyn, 8)
 		var ml := Label3D.new()
 		ml.text = "Museum · %d" % (int(S["rep"]) + S["coins"].size())
 		ml.font_size = 80
@@ -1265,6 +1305,7 @@ func build_admin() -> void:
 	B(0.3, 1.2, depth, "#e9e4d8", x0 + 9 * w + 0.15, 0.7, z0, dyn)
 	for k in range(8):
 		B(0.08, 0.02, 1.6, "#ffffff", -14.0 + k * 4.0, 0.12, z0 + depth / 2.0 + 1.6, dyn)
+	B(9 * w + 0.6, 0.05, 3.4, "#454b4e", 0.0, 0.1, z0 + depth / 2.0 + 1.6, dyn)
 	var civ := ["#c8102e", "#e8ecee", "#2a2f3a", "#3d6fb0", "#e2b53c", "#6fae8f"]
 	for k in range(6):
 		var car := police_car(civ[k], civ[k], false, false)
@@ -1895,7 +1936,15 @@ func bake_into(root: Node3D, items: Array) -> void:
 		var mesh: Mesh = it[0]
 		var xf: Transform3D = it[1]
 		var m: Material = it[3]
-		if mergeable(m):
+		if m == vc_mat and vc_mat != null:
+			# bereits zusammengefasstes Mesh: Vertex-Farben übernehmen
+			var arr := mesh.surface_get_arrays(0)
+			verts.append_array(xf * (arr[Mesh.ARRAY_VERTEX] as PackedVector3Array))
+			norms.append_array(Transform3D(xf.basis, Vector3.ZERO) * (arr[Mesh.ARRAY_NORMAL] as PackedVector3Array))
+			cols.append_array(arr[Mesh.ARRAY_COLOR])
+			if it[4]:
+				shadow = true
+		elif mergeable(m):
 			var fa := flat_arrays(mesh)
 			var v: PackedVector3Array = fa[0]
 			verts.append_array(xf * v)
