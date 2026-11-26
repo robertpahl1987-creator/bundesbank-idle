@@ -41,7 +41,9 @@ func visual_sig() -> String:
 	parts.append("lv%d" % min(int(S["lv"]), 6))
 	for k in ["t8", "t11", "t12"]:
 		parts.append(k + str(int(main.has_flag("t", k))))
-	var caps := {"g1": 8, "g2": 8, "g3": 1, "g4": 1, "g5": 1, "g6": 3, "g7": 1, "g8": 4, "g9": 4, "g10": 1}
+	parts.append("wt%d" % wall_tier())
+	parts.append("cart%d" % cart_count())
+	var caps := {"g1": 8, "g2": 12, "g4": 1, "g5": 1, "g6": 3, "g7": 1, "g8": 4, "g9": 4, "g10": 1}
 	for k in caps.keys():
 		parts.append(k + str(min(cnt("g", k), caps[k])))
 	var tot := 0
@@ -191,13 +193,61 @@ func coin(id: String, x: float, y: float, z: float, p: Node3D, scale_f := 1.0) -
 		var relief := C(r * 0.42, r * 0.42, h + 0.014, "#000000", x, y + 0.002, z, p, 16)
 		relief.material_override = metal(sp.ring, 0)
 
-func person(col: String, p: Node3D, helmet := false) -> Node3D:
+const SKIN := ["#f1c9a5", "#d9a77e", "#a8744f", "#f5d6bd"]
+const HAIR := ["#3b2a1e", "#1b1b1b", "#8a5a2b", "#c9a15a", "#5a3a22"]
+
+## Figur mit Beinen, Schuhen, Armen, Händen, Kopf, Haaren und Gesicht
+func person(col: String, p: Node3D, helmet := false, style := "") -> Node3D:
 	var g := Node3D.new()
-	B(0.34, 0.3, 0.24, "#2b3436", 0, 0.15, 0, g)
-	B(0.4, 0.5, 0.28, col, 0, 0.55, 0, g)
-	B(0.28, 0.28, 0.28, "#f1c9a5", 0, 0.95, 0, g)
-	if helmet:
-		B(0.32, 0.1, 0.32, "#ffd21a", 0, 1.13, 0, g)
+	var skin: String = SKIN[randi() % SKIN.size()]
+	var pants := "#2b3436"
+	if style == "guard" or style == "police":
+		pants = "#1c2a40"
+	elif style == "soldier":
+		pants = "#3f4a2a"
+	elif style == "manager":
+		pants = "#2a2f3a"
+	# Beine und Schuhe
+	B(0.13, 0.4, 0.15, pants, -0.08, 0.26, 0, g)
+	B(0.13, 0.4, 0.15, pants, 0.08, 0.26, 0, g)
+	B(0.14, 0.06, 0.21, "#141414", -0.08, 0.03, 0.03, g)
+	B(0.14, 0.06, 0.21, "#141414", 0.08, 0.03, 0.03, g)
+	# Oberkörper und Arme
+	B(0.36, 0.4, 0.22, col, 0, 0.66, 0, g)
+	B(0.1, 0.38, 0.12, col, -0.24, 0.65, 0, g)
+	B(0.1, 0.38, 0.12, col, 0.24, 0.65, 0, g)
+	B(0.09, 0.08, 0.1, skin, -0.24, 0.42, 0, g)
+	B(0.09, 0.08, 0.1, skin, 0.24, 0.42, 0, g)
+	B(0.36, 0.05, 0.23, "#1a1a1a", 0, 0.48, 0, g)
+	# Kopf, Gesicht
+	B(0.12, 0.06, 0.12, skin, 0, 0.89, 0, g)
+	B(0.25, 0.26, 0.24, skin, 0, 1.04, 0, g)
+	B(0.04, 0.035, 0.01, "#1a1a1a", -0.06, 1.06, 0.123, g)
+	B(0.04, 0.035, 0.01, "#1a1a1a", 0.06, 1.06, 0.123, g)
+	B(0.08, 0.02, 0.01, "#8a4a3a", 0, 0.98, 0.123, g)
+	match style:
+		"guard", "police":
+			B(0.27, 0.07, 0.27, "#16233a", 0, 1.2, 0, g)
+			B(0.27, 0.025, 0.1, "#16233a", 0, 1.17, 0.16, g)
+			B(0.37, 0.12, 0.23, "#ffd21a" if style == "police" else "#c9d2d5", 0, 0.72, 0.005, g)
+		"soldier":
+			B(0.29, 0.1, 0.29, "#3f4a2a", 0, 1.2, 0, g)
+			B(0.37, 0.3, 0.24, "#4b5a32", 0, 0.68, 0, g)
+		"manager":
+			B(0.27, 0.07, 0.25, HAIR[randi() % HAIR.size()], 0, 1.19, -0.01, g)
+			B(0.07, 0.3, 0.01, "#c8102e", 0, 0.68, 0.115, g)
+			B(0.37, 0.4, 0.2, "#2a2f3a", 0, 0.66, -0.02, g)
+		"robber":
+			B(0.27, 0.28, 0.26, "#111111", 0, 1.05, 0, g)
+			B(0.18, 0.05, 0.01, "#f1c9a5", 0, 1.07, 0.132, g)
+		_:
+			if helmet:
+				B(0.3, 0.1, 0.3, "#ffd21a", 0, 1.21, 0, g)
+				B(0.3, 0.02, 0.1, "#ffd21a", 0, 1.17, 0.17, g)
+				B(0.37, 0.04, 0.23, "#e8ecee", 0, 0.75, 0.003, g)
+				B(0.37, 0.04, 0.23, "#e8ecee", 0, 0.62, 0.003, g)
+			else:
+				B(0.27, 0.07, 0.25, HAIR[randi() % HAIR.size()], 0, 1.19, -0.01, g)
 	p.add_child(g)
 	return g
 
@@ -302,7 +352,7 @@ func build_static() -> void:
 	label3d("Tresor", -10, 4.4, 4.0)
 	label3d("Fuhrpark", 6, 2.4, 7.5)
 	for i in range(3):
-		var r := person("#222831", self)
+		var r := person("#222831", self, false, "robber")
 		r.visible = false
 		robbers.append(r)
 	beacon = MeshInstance3D.new()
@@ -473,6 +523,7 @@ func build() -> void:
 	build_extras()
 	build_security()
 	build_fleet()
+	build_carts()
 	var tb := Time.get_ticks_usec()
 	var nodes_before := dyn.get_child_count()
 	var skip := {}
@@ -663,6 +714,69 @@ func pallet(pos: Vector3, kind: int, p: Node3D) -> void:
 				B(0.12, 0.152, 0.402, "#f4f1e6", bx2, pos.y + 0.2 + lay * 0.16, bz2, p)
 		B(1.08, 0.04, 0.06, "#ffffff", pos.x, pos.y + 0.54, pos.z, p)
 
+## Elektro-Wagen bringen das hergestellte Geld von den Hallen zum Tresor
+const CART_COIN := [[-2.4, 0.2], [-2.4, 2.3], [-2.6, 7.0], [-3.9, 7.0]]
+const CART_NOTE := [[2.6, 1.6], [2.6, 2.3], [-2.4, 2.3], [-2.6, 7.0], [-3.9, 7.0]]
+
+func cart_count() -> int:
+	var p: float = main.prod()
+	if p <= 0.0:
+		return 0
+	return clamp(1 + int(log(p + 1.0) / log(10.0)), 1, 6)
+
+func build_carts() -> void:
+	anim["carts"] = []
+	var n := cart_count()
+	var has_note := false
+	for l in main.LINES:
+		if l.get("note", false) and cnt("l", l.id) > 0:
+			has_note = true
+	for j in range(n):
+		var note := has_note and j % 2 == 1
+		var cart := Node3D.new()
+		dyn.add_child(cart)
+		var body := Node3D.new()
+		cart.add_child(body)
+		B(1.0, 0.12, 0.6, "#3a4448", 0, 0.32, 0, body)
+		B(0.3, 0.42, 0.56, "#0e8a7c" if not note else "#3d6fb0", 0.42, 0.5, 0, body)
+		B(0.05, 0.05, 0.56, "#d9e0e3", 0.6, 0.62, 0, body)
+		for w in [[-0.32, 0.3], [0.32, 0.3], [-0.32, -0.3], [0.32, -0.3]]:
+			var wm := C(0.11, 0.11, 0.08, "#141414", w[0], 0.14, w[1], body, 8)
+			wm.rotation.x = PI / 2
+		var dr := person("#ff7a1a" if not note else "#3f6fb5", body, true)
+		dr.position = Vector3(0.42, 0.25, 0)
+		dr.scale = Vector3(0.8, 0.8, 0.8)
+		merge_deep(body)
+		var cargo := Node3D.new()
+		cart.add_child(cargo)
+		if note:
+			for k in range(4):
+				B(0.28, 0.14, 0.22, ["#5b8fd0", "#6fae8f", "#e09a3a", "#9aa3a8"][k], -0.32 + (k % 2) * 0.3, 0.46 + int(k / 2) * 0.15, 0.0, cargo)
+		else:
+			for k in range(3):
+				var sk := sphere(0.16, "#c9b48a", -0.38 + k * 0.26, 0.52, 0.0, cargo)
+				sk.scale = Vector3(1, 1.2, 1)
+		merge_deep(cargo)
+		anim.carts.append({n = cart, cargo = cargo, path = CART_NOTE if note else CART_COIN, ph = float(j) / max(1, n)})
+
+func path_pos(path: Array, u: float) -> Array:
+	var total := 0.0
+	var ls := []
+	for i in range(path.size() - 1):
+		var l := Vector2(path[i + 1][0] - path[i][0], path[i + 1][1] - path[i][1]).length()
+		ls.append(l)
+		total += l
+	var d := u * total
+	for i in range(ls.size()):
+		if d <= ls[i]:
+			var a: Array = path[i]
+			var b: Array = path[i + 1]
+			var f: float = d / ls[i]
+			return [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, atan2(-(b[1] - a[1]), b[0] - a[0])]
+		d -= ls[i]
+	var e: Array = path[path.size() - 1]
+	return [e[0], e[1], 0.0]
+
 func build_extras() -> void:
 	var S: Dictionary = main.S
 	# Goldreserve neben dem Tresor
@@ -740,32 +854,121 @@ func build_extras() -> void:
 	for id in mpos.keys():
 		if S["mgr"].get(id, false):
 			var mp: Array = mpos[id]
-			var pm := person("#f4f5f2", dyn)
+			var pm := person("#f4f5f2", dyn, false, "manager")
 			B(0.08, 0.32, 0.02, "#c8102e", 0, 0.6, 0.15, pm)
 			B(0.42, 0.2, 0.3, "#2b3436", 0, 0.22, 0, pm)
 			pm.position = Vector3(mp[0], 0.15, mp[1])
 
+func wall_tier() -> int:
+	var g3 := cnt("g", "g3")
+	if g3 >= 30:
+		return 4
+	if g3 >= 15:
+		return 3
+	if g3 >= 5:
+		return 2
+	if g3 >= 1:
+		return 1
+	return 0
+
+## Mauer-Abschnitte (Start, Ende) rund ums Werk, mit Lücke für das Tor
+const WALL_SEGS := [[-17.6, -15.6, 17.6, -15.6], [-17.6, -15.6, -17.6, 15.6], [-17.6, 15.6, 17.6, 15.6], [17.6, -15.6, 17.6, 11.2], [17.6, 14.4, 17.6, 15.6]]
+
+func wall_piece(x1: float, z1: float, x2: float, z2: float, h: float, th: float, col: String, y0 := 0.1) -> void:
+	var dx := x2 - x1
+	var dz := z2 - z1
+	var L: float = max(abs(dx), abs(dz))
+	if abs(dx) > abs(dz):
+		B(L + th, h, th, col, (x1 + x2) / 2.0, y0 + h / 2.0, z1, dyn)
+	else:
+		B(th, h, L + th, col, x1, y0 + h / 2.0, (z1 + z2) / 2.0, dyn)
+
+func build_wall(wt: int) -> void:
+	for sg in WALL_SEGS:
+		var x1: float = sg[0]
+		var z1: float = sg[1]
+		var x2: float = sg[2]
+		var z2: float = sg[3]
+		var L: float = max(abs(x2 - x1), abs(z2 - z1))
+		var horiz: bool = abs(x2 - x1) > abs(z2 - z1)
+		if wt == 1:
+			# Maschendrahtzaun: Pfosten + Drähte
+			var k := 0.0
+			while k <= L + 0.01:
+				var px: float = x1 + (k if horiz else 0.0)
+				var pz: float = z1 + (0.0 if horiz else k)
+				C(0.05, 0.05, 1.5, "#7d878c", px, 0.85, pz, dyn, 6)
+				k += 2.5
+			for y in [0.4, 0.8, 1.2, 1.55]:
+				wall_piece(x1, z1, x2, z2, 0.03, 0.03, "#aab3b8", y)
+		else:
+			var h := 1.6 if wt == 2 else 2.4
+			var col := "#c9c2b4" if wt == 2 else "#a9a397"
+			wall_piece(x1, z1, x2, z2, h, 0.35, col)
+			wall_piece(x1, z1, x2, z2, 0.12, 0.45, "#8a8478", h + 0.1)
+			var k2 := 0.0
+			while k2 <= L + 0.01:
+				var qx: float = x1 + (k2 if horiz else 0.0)
+				var qz: float = z1 + (0.0 if horiz else k2)
+				B(0.5, h + 0.15, 0.5, "#b3ad9f", qx, (h + 0.15) / 2.0 + 0.1, qz, dyn)
+				k2 += 4.0
+			if wt >= 3:
+				# Stacheldraht oben
+				var bw := C(0.12, 0.12, L, "#9aa3a8", (x1 + x2) / 2.0, h + 0.35, (z1 + z2) / 2.0, dyn, 6)
+				if horiz:
+					bw.rotation.z = PI / 2
+				else:
+					bw.rotation.x = PI / 2
+			if wt >= 4:
+				wall_piece(x1, z1, x2, z2, 0.15, 0.37, "#c8102e", h * 0.5)
+	# Tor
+	anim.gate = B(0.3, 1.6 if wt >= 2 else 1.3, 3.2, "#3d4a52", 17.6, 0.9, 12.8, dyn)
+	if wt >= 2:
+		B(0.6, 2.6, 0.6, "#8a8478", 17.6, 1.4, 10.9, dyn)
+		B(0.6, 2.6, 0.6, "#8a8478", 17.6, 1.4, 14.7, dyn)
+	# Wachtürme an den Ecken
+	if wt >= 3:
+		for c in [[-17.6, -15.6], [17.6, -15.6], [-17.6, 15.6], [17.6, 15.6]]:
+			for o in [[-0.5, -0.5], [0.5, -0.5], [-0.5, 0.5], [0.5, 0.5]]:
+				B(0.14, 4.0, 0.14, "#5a6163", c[0] + o[0], 2.1, c[1] + o[1], dyn)
+			B(1.6, 0.12, 1.6, "#5a6163", c[0], 4.1, c[1], dyn)
+			B(1.5, 0.9, 1.5, "#d9d2c2", c[0], 4.6, c[1], dyn)
+			B(1.3, 0.35, 1.52, "#2a3a40", c[0], 4.75, c[1], dyn)
+			B(1.8, 0.12, 1.8, "#c8102e", c[0], 5.12, c[1], dyn)
+			if wt >= 4:
+				var sl := B(0.35, 0.3, 0.35, "#fff2c0", c[0], 5.35, c[1], dyn)
+				sl.material_override = lamp_mat
+
 func build_security() -> void:
 	var g3 := cnt("g", "g3")
-	if g3 > 0:
-		B(35, 1, 0.12, "#9aa3a8", 0, 0.6, -15.6, dyn, 0.85)
-		B(0.12, 1, 31.2, "#9aa3a8", -17.6, 0.6, 0, dyn, 0.85)
-		B(0.12, 1, 26.4, "#9aa3a8", 17.6, 0.6, -2.4, dyn, 0.85)
-		B(35, 1, 0.12, "#9aa3a8", 0, 0.6, 15.6, dyn, 0.85)
-		anim.gate = B(0.3, 1.3, 3, "#3d4a52", 17.6, 0.75, 12.8, dyn)
+	var wt := wall_tier()
+	if wt > 0:
+		build_wall(wt)
 	var g1 := cnt("g", "g1")
 	if g1 > 0:
 		B(1.8, 1.6, 1.8, "#efe7d4", 15.5, 0.9, 15, dyn)
 		B(2.1, 0.25, 2.1, "#c8102e", 15.5, 1.8, 15, dyn)
 	var ng: int = min(g1, 8)
 	for j in range(ng):
-		anim.guards.append({p = person("#1f3a5f", dyn), u = float(j) / ng})
-	var cams := [[-17, -15], [17, -15], [-17, 15], [17, 11], [0, -15], [0, 2.4], [-17, 0], [17, 0]]
-	for j in range(min(cnt("g", "g2"), 8)):
+		anim.guards.append({p = person("#1f3a5f", dyn, false, "guard"), u = float(j) / ng})
+	var cams := [[-16.8, -14.8], [16.8, -14.8], [-16.8, 14.8], [16.6, 10.6], [0, -14.8], [-3.6, 2.2], [-16.8, 0], [16.8, 0], [-4.2, 11.6], [8, 2.2], [-8, -12.6], [8, -12.6]]
+	for j in range(min(cnt("g", "g2"), 12)):
 		var x: float = cams[j][0]
 		var z: float = cams[j][1]
-		C(0.08, 0.1, 3, "#5a6163", x, 1.5, z, dyn, 6)
-		anim.cams.append(B(0.6, 0.3, 0.3, "#e8ecee", x, 3.05, z, dyn))
+		C(0.07, 0.09, 3.2, "#4a5257", x, 1.6, z, dyn, 8)
+		B(0.12, 0.12, 0.5, "#4a5257", x, 3.15, z + 0.2, dyn)
+		var head := Node3D.new()
+		head.position = Vector3(x, 3.05, z + 0.4)
+		dyn.add_child(head)
+		B(0.26, 0.24, 0.55, "#eef1f2", 0, 0, 0.12, head)
+		B(0.32, 0.04, 0.62, "#d0d6d9", 0, 0.14, 0.12, head)
+		var lens := C(0.08, 0.08, 0.06, "#101418", 0, 0, 0.42, head, 10)
+		lens.rotation.x = PI / 2
+		var led := B(0.04, 0.04, 0.02, "#ff2030", 0.09, 0.07, 0.4, head)
+		led.material_override = mat("#ff2030", 1.0, true)
+		head.rotation.x = 0.35
+		merge_deep(head)
+		anim.cams.append(head)
 	beacon.visible = cnt("g", "g4") > 0
 	if cnt("g", "g5") > 0:
 		for k in range(4):
@@ -783,12 +986,12 @@ func build_security() -> void:
 	if cnt("g", "g7") > 0:
 		B(2.6, 1.3, 1.2, "#1d2326", 21, 0.8, 16, dyn)
 		for j in range(3):
-			person("#1d2326", dyn).position = Vector3(19 + j * 0.7, 0.1, 17.5)
+			person("#1d2326", dyn, false, "guard").position = Vector3(19 + j * 0.7, 0.1, 17.5)
 	if cnt("g", "g8") > 0:
 		B(3, 1.4, 1.3, "#4b5a32", 24, 0.85, 9.6, dyn)
 		B(1.2, 1, 1.3, "#4b5a32", 26, 0.65, 9.6, dyn)
 		for j in range(min(cnt("g", "g8"), 4)):
-			person("#4b5a32", dyn).position = Vector3(19.5 + j * 0.8, 0.1, 14.4)
+			person("#4b5a32", dyn, false, "soldier").position = Vector3(19.5 + j * 0.8, 0.1, 14.4)
 	for j in range(min(cnt("g", "g9"), 4)):
 		var d := Node3D.new()
 		B(0.6, 0.15, 0.6, "#2b3436", 0, 0, 0, d)
@@ -1046,11 +1249,11 @@ func collect_meshes(n: Node, out: Array) -> void:
 		collect_meshes(c, out)
 
 func apply_quality() -> void:
-	var high: bool = int(main.S.get("gfx", 1)) == 1
-	sun.shadow_enabled = high
-	var vp := get_viewport()
-	if vp is SubViewport:
-		vp.msaa_3d = Viewport.MSAA_2X if high else Viewport.MSAA_DISABLED
+	var g: int = int(main.S.get("gfx", 2))
+	sun.shadow_enabled = g >= 1
+	sun.directional_shadow_max_distance = 75.0 if g == 2 else 110.0
+	sun.shadow_blur = 0.6 if g == 2 else 1.0
+	RenderingServer.directional_shadow_atlas_set_size(4096 if g == 2 else 2048, true)
 
 # ---------------------------------------------------------------- Kamera & Eingabe
 func fit() -> void:
@@ -1186,6 +1389,15 @@ func _process(dt: float) -> void:
 		var u := fposmod(t * 0.04, 1.0)
 		anim.plane.position = Vector3(-40 + u * 90, 12, -30 + u * 50)
 		anim.plane.rotation.y = -atan2(50, 90)
+	if anim.has("carts"):
+		for c in anim.carts:
+			var u := fposmod(t * 0.045 + c.ph, 1.0)
+			var going := u < 0.5
+			var f: float = u * 2.0 if going else (1.0 - u) * 2.0
+			var pp := path_pos(c.path, f)
+			c.n.position = Vector3(pp[0], 0.05, pp[1])
+			c.n.rotation.y = pp[2] if going else pp[2] + PI
+			c.cargo.visible = going
 	if anim.has("vdoor") and is_instance_valid(anim.vdoor):
 		var target := 0.0 if main.S["warn"] > 0.0 else 1.45
 		anim.vdoor.rotation.y = lerp(anim.vdoor.rotation.y, target, min(1.0, 0.04 * 60.0 * get_process_delta_time()))
@@ -1201,11 +1413,11 @@ func _process(dt: float) -> void:
 	var night := 0.0
 	if ph > 0.55:
 		night = clamp((ph - 0.55) / 0.08, 0.0, 1.0) * clamp((1.0 - ph) / 0.05, 0.0, 1.0)
-	sun.light_energy = lerp(0.95, 0.12, night)
+	sun.light_energy = lerp(0.82, 0.12, night)
 	sun.light_color = Color("#fff4df").lerp(Color("#8fa8ff"), night)
 	env.background_color = Color("#7ec8e3").lerp(Color("#0b1530"), night)
 	env.ambient_light_color = Color("#d8ecff").lerp(Color("#4a5ea8"), night)
-	env.ambient_light_energy = lerp(0.32, 0.22, night)
+	env.ambient_light_energy = lerp(0.27, 0.2, night)
 	lamp_mat.emission_energy_multiplier = night * 3.0
 	win_mat.emission_energy_multiplier = night * 2.5
 	var al: bool = main.S["warn"] > 0.0

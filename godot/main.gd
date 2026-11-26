@@ -241,6 +241,29 @@ func download_failed() -> void:
 	l_update.text = "Das direkte Update hat nicht geklappt. Tippe auf „Im Browser laden“ – danach die Datei öffnen und installieren."
 	upd_browser.visible = true
 var world_big := false
+var world_svc: SubViewportContainer
+
+const GFX_NAMES := ["Sparsam", "Hoch", "Ultra"]
+const GFX_RES := [0.5, 0.8, 1.0]
+
+## Das 3D-Werk in der echten Pixel-Auflösung des Handys zeichnen (statt hochskaliert)
+func update_world_res() -> void:
+	if world_svc == null or world == null:
+		return
+	var sc: float = get_viewport().get_final_transform().get_scale().x
+	if sc <= 0.0:
+		sc = 1.0
+	var q: float = GFX_RES[clamp(int(S.get("gfx", 2)), 0, 2)]
+	var f: float = max(sc * q, 0.5)
+	var px := Vector2i(max(1, int(world_box.size.x * f)), max(1, int(world_box.size.y * f)))
+	var sv: SubViewport = world.get_viewport()
+	sv.size = px
+	world_svc.size = Vector2(px)
+	world_svc.scale = Vector2.ONE / f
+	world_svc.position = Vector2.ZERO
+	var g := int(S.get("gfx", 2))
+	sv.msaa_3d = [Viewport.MSAA_DISABLED, Viewport.MSAA_2X, Viewport.MSAA_4X][clamp(g, 0, 2)]
+	sv.screen_space_aa = Viewport.SCREEN_SPACE_AA_DISABLED
 
 # ---------------------------------------------------------------- Zustand
 func now() -> float:
@@ -250,7 +273,7 @@ func blank() -> Dictionary:
 	return {cash=25.0, stock=0.0, lv=0, total=0.0, life=0.0, l={"c1": 1}, v={"v1": 1}, t={}, f={}, g={"g1": 2},
 		rep=0, next=90.0, warn=0.0, gang=0, won=0, lost=0, log=[], ts=now(), mig1=1, orders=[], odone=0,
 		mgr={}, auto={}, sites={}, shred=0, gold=0, zins=2, fx=[], gt=0.0, ev_next=240.0, ev_cur="", daily_day=0, streak=0,
-		box_ts=0.0, ach={}, coins=[], fakes=0, gfx=1, hunt_next=60.0, escort=0, museum=0, amb_next=300.0, comm_next=300.0}
+		box_ts=0.0, ach={}, coins=[], fakes=0, gfx=2, hunt_next=60.0, escort=0, museum=0, amb_next=300.0, comm_next=300.0}
 
 func load_game() -> void:
 	S = blank()
@@ -834,12 +857,16 @@ func _ready() -> void:
 	bold_font.base_font = base
 	bold_font.variation_embolden = 0.9
 	load_game()
+	if not S.has("gfx_v3"):
+		S["gfx"] = 2
+		S["gfx_v3"] = 1
 	if not S.has("mig1"):
 		S["g"]["g1"] = max(cnt("g", "g1"), 2)
 		S["mig1"] = 1
 	if OS.has_environment("BB_VIEW"):
 		view = OS.get_environment("BB_VIEW")
 	build_ui()
+	call_deferred("update_world_res")
 	offline_catchup()
 	render()
 	http = HTTPRequest.new()
@@ -940,7 +967,7 @@ func world_render_tick(dt: float) -> void:
 	wframe += 1
 	if scroll_quiet < 0.35:
 		sv.render_target_update_mode = SubViewport.UPDATE_DISABLED
-	elif int(S.get("gfx", 1)) == 1 or wframe % 2 == 0:
+	elif int(S.get("gfx", 2)) >= 1 or wframe % 2 == 0:
 		sv.render_target_update_mode = SubViewport.UPDATE_ONCE
 	else:
 		sv.render_target_update_mode = SubViewport.UPDATE_DISABLED
@@ -1129,14 +1156,15 @@ func build_ui() -> void:
 	world_box.custom_minimum_size = Vector2(0, 470)
 	world_box.clip_contents = true
 	root.add_child(world_box)
-	var svc := SubViewportContainer.new()
-	svc.stretch = true
-	svc.set_anchors_preset(Control.PRESET_FULL_RECT)
+	world_svc = SubViewportContainer.new()
+	var svc := world_svc
+	svc.stretch = false
 	world_box.add_child(svc)
 	var sv := SubViewport.new()
 	sv.msaa_3d = Viewport.MSAA_2X
 	sv.name = "WorldViewport"
 	svc.add_child(sv)
+	world_box.resized.connect(update_world_res)
 	world = preload("res://world.gd").new()
 	world.main = self
 	sv.add_child(world)
@@ -1646,10 +1674,11 @@ func render_bank() -> void:
 	lg.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	rg.add_child(lg)
 	lg.add_child(lbl("Grafik", 29, C_INK, true))
-	lg.add_child(lbl("Hoch: Schatten und Kantenglättung. Sparsam: läuft flüssiger auf älteren Handys.", 23, C_MUT, false, true))
-	rg.add_child(btn("Hoch" if int(S["gfx"]) == 1 else "Sparsam", func():
-		S["gfx"] = 0 if int(S["gfx"]) == 1 else 1
+	lg.add_child(lbl("Ultra: volle Bildschirmschärfe, 4-fache Kantenglättung, feine Schatten. Hoch: etwas weniger scharf, schneller. Sparsam: für ältere Handys.", 23, C_MUT, false, true))
+	rg.add_child(btn(GFX_NAMES[clamp(int(S["gfx"]), 0, 2)], func():
+		S["gfx"] = (int(S["gfx"]) + 2) % 3
 		world.apply_quality()
+		update_world_res()
 		save_game()
 		render(), "light", 200))
 
