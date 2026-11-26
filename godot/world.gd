@@ -1688,6 +1688,79 @@ func windshield(x: float, y: float, h: float, w: float, p: Node3D, lean := 0.25)
 	var g := B(0.05, h, w, "#22323d", x, y, 0, p)
 	g.rotation.z = lean
 
+## Gepanzerter Werttransporter: Kurzhauber mit großem Kühlergrill, schräger Panzerscheibe,
+## durchgehendem Panzeraufbau, Schießscharten, Lüftungsgittern und Rundumleuchte
+func armored(v: Node3D, L: float, big: bool) -> void:
+	var Y := "#e9b915"
+	var Yd := "#c99a0c"
+	var W := 1.08 if big else 0.98
+	var H := 1.35 if big else 1.2
+	var fx := L / 2.0
+	var hood := 0.55
+	var cab_x := fx - hood
+	# Fahrgestell
+	B(L - 0.2, 0.14, W - 0.3, "#1b1f22", -0.05, 0.3, 0, v)
+	# Motorhaube (Kurzhauber) und Front
+	B(hood, 0.62, W - 0.06, Y, fx - hood / 2.0, 0.72, 0, v)
+	B(hood + 0.02, 0.05, W - 0.1, Yd, fx - hood / 2.0, 1.04, 0, v)
+	# großer Kühlergrill mit Querstreben
+	B(0.04, 0.44, W * 0.62, "#1c2023", fx + 0.005, 0.78, 0, v)
+	for k in 3:
+		B(0.05, 0.05, W * 0.6, "#3a4247", fx + 0.02, 0.66 + k * 0.12, 0, v)
+	# Stoßfänger mit Lufteinlass
+	B(0.16, 0.24, W + 0.04, Y, fx + 0.05, 0.43, 0, v)
+	B(0.03, 0.08, W * 0.55, "#1c2023", fx + 0.135, 0.43, 0, v)
+	# runde Scheinwerfer und Blinker
+	for zz in [-1.0, 1.0]:
+		var hl := C(0.07, 0.07, 0.04, "#fffbe0", fx + 0.01, 0.62, zz * (W * 0.38), v, 10)
+		hl.rotation.z = PI / 2
+		hl.material_override = mat("#fffbe0", 1.0, true)
+		var bl := B(0.03, 0.08, 0.07, "#ff8a1a", fx + 0.01, 0.62, zz * (W * 0.44), v)
+		bl.material_override = mat("#ff8a1a", 1.0, true)
+		var rl := B(0.03, 0.14, 0.1, "#ff2030", -fx - 0.01, 0.65, zz * (W * 0.4), v)
+		rl.material_override = mat("#ff2030", 1.0, true)
+	# Fahrerhaus mit schräger Panzerscheibe (zweigeteilt)
+	B(0.7, H - 0.12, W, Y, cab_x - 0.35, 0.36 + (H - 0.12) / 2.0, 0, v)
+	var ws := B(0.05, 0.36, W * 0.4, "#24343f", cab_x + 0.02, 0.36 + H - 0.38, W * 0.22, v)
+	ws.rotation.z = 0.5
+	var ws2 := B(0.05, 0.36, W * 0.4, "#24343f", cab_x + 0.02, 0.36 + H - 0.38, -W * 0.22, v)
+	ws2.rotation.z = 0.5
+	B(0.12, 0.08, W - 0.02, Y, cab_x - 0.06, 0.36 + H - 0.1, 0, v)
+	# kleine Seitenfenster und Spiegel
+	for zz in [-1.0, 1.0]:
+		B(0.22, 0.22, 0.02, "#24343f", cab_x - 0.25, 0.36 + H - 0.4, zz * (W / 2.0 + 0.005), v)
+		B(0.04, 0.04, 0.2, "#1b1f22", cab_x - 0.05, 0.36 + H - 0.35, zz * (W / 2.0 + 0.08), v)
+		B(0.05, 0.22, 0.1, "#1b1f22", cab_x - 0.05, 0.36 + H - 0.4, zz * (W / 2.0 + 0.2), v)
+	# Panzeraufbau
+	var bl_len := L - hood - 0.7
+	var bx := cab_x - 0.7 - bl_len / 2.0
+	B(bl_len, H, W + 0.02, Y, bx, 0.36 + H / 2.0, 0, v)
+	B(bl_len + 0.7, 0.05, W + 0.03, Yd, bx + 0.35, 0.36 + H, 0, v)
+	for zz in [-1.0, 1.0]:
+		var zs: float = zz * (W / 2.0 + 0.015)
+		# Schießscharten und Lüftungsgitter
+		for k in (3 if big else 2):
+			B(0.12, 0.08, 0.01, "#15181a", bx + bl_len / 2.0 - 0.35 - k * 0.55, 0.36 + H * 0.62, zs, v)
+		B(0.36, 0.14, 0.01, "#2a2f33", cab_x - 0.95, 0.36 + H * 0.45, zs, v)
+		# Türfuge, Trittstufe, Radkästen
+		B(0.015, H * 0.8, 0.012, Yd, cab_x - 0.68, 0.36 + H * 0.5, zs, v)
+		B(0.25, 0.04, 0.12, "#2b3033", cab_x - 0.4, 0.4, zz * (W / 2.0 + 0.03), v)
+	# Hecktür mit Mittelfuge
+	B(0.012, H * 0.85, 0.02, Yd, -fx - 0.005, 0.36 + H / 2.0, 0, v)
+	B(0.06, 0.12, W, "#2b3033", -fx, 0.38, 0, v)
+	# Rundumleuchte und Antenne
+	var bc := C(0.06, 0.07, 0.1, "#ff8a1a", cab_x - 0.2, 0.36 + H + 0.08, 0, v, 8)
+	bc.material_override = mat("#ff8a1a", 1.0, true)
+	C(0.01, 0.01, 0.35, "#1b1f22", bx - bl_len * 0.3, 0.36 + H + 0.18, 0.3, v, 4)
+	# Räder
+	var r := 0.3 if big else 0.26
+	var axles := [fx - 0.45, -fx + 0.55]
+	if big:
+		axles.append(-fx + 1.15)
+	for ax in axles:
+		wheel(ax, W / 2.0 - 0.05, r, v)
+		wheel(ax, -W / 2.0 + 0.05, r, v)
+
 ## Realistische Fahrzeuge: Lieferwagen, Geldtransporter, Panzerwagen, LKW mit Kofferaufbau
 func vehicle(k: String, army := false) -> Node3D:
 	var v := Node3D.new()
@@ -1712,40 +1785,9 @@ func vehicle(k: String, army := false) -> Node3D:
 			B(0.06, 0.08, 0.06, "#1b1f22", 0.42, 0.95, 0.47, v)
 			B(0.06, 0.08, 0.06, "#1b1f22", 0.42, 0.95, -0.47, v)
 		"v2":
-			# gepanzerter Geldtransporter (Sprinter-Bauform)
-			B(2.3, 0.1, 0.94, "#1b1f22", 0, 0.22, 0, v)
-			B(0.45, 0.42, 0.92, "#5d676c", 0.92, 0.47, 0, v)
-			B(0.5, 0.85, 0.92, "#5d676c", 0.5, 0.7, 0, v)
-			windshield(0.78, 0.93, 0.36, 0.84, v, 0.35)
-			B(0.3, 0.2, 0.94, "#22323d", 0.52, 0.95, 0, v)
-			B(1.55, 1.12, 0.96, "#c3cbcf", -0.4, 0.83, 0, v)
-			B(1.56, 0.14, 0.97, "#ffc23d", -0.4, 0.62, 0, v)
-			B(0.02, 0.9, 0.02, "#7a8489", -1.18, 0.83, 0, v)
-			B(0.06, 0.14, 0.7, "#2b3033", 1.16, 0.34, 0, v)
-			B(0.3, 0.1, 0.3, "#c3cbcf", -0.4, 1.44, 0, v)
-			lights(1.15, -1.18, 0.5, 0.34, v)
-			for ww in [[0.78, 0.48], [-0.78, 0.48], [0.78, -0.48], [-0.78, -0.48]]:
-				wheel(ww[0], ww[1], 0.22, v)
-			B(0.06, 0.1, 0.06, "#1b1f22", 0.72, 1.0, 0.52, v)
-			B(0.06, 0.1, 0.06, "#1b1f22", 0.72, 1.0, -0.52, v)
+			armored(v, 2.5, false)
 		"v3":
-			# Panzerwagen: schwerer, kantiger Werttransporter mit Sehschlitzen
-			B(2.7, 0.14, 1.04, "#1b1f22", 0, 0.28, 0, v)
-			B(0.55, 0.55, 1.02, "#3f4d52", 1.06, 0.62, 0, v)
-			B(0.6, 1.05, 1.04, "#3f4d52", 0.55, 0.9, 0, v)
-			B(0.05, 0.14, 0.86, "#22323d", 0.86, 1.18, 0, v)
-			B(1.75, 1.3, 1.06, "#4a5a60", -0.6, 1.0, 0, v)
-			B(1.76, 0.1, 1.07, "#2f6bff", -0.6, 0.72, 0, v)
-			for zz in [-0.54, 0.54]:
-				B(0.3, 0.06, 0.01, "#22323d", -0.3, 1.25, zz, v)
-				B(0.3, 0.06, 0.01, "#22323d", -1.0, 1.25, zz, v)
-			B(0.5, 0.12, 0.5, "#3f4d52", -0.6, 1.72, 0, v)
-			B(0.1, 0.2, 1.06, "#2b3033", 1.36, 0.42, 0, v)
-			var bl := B(0.3, 0.1, 0.6, "#2f6bff", 0.55, 1.47, 0, v)
-			bl.material_override = mat("#3a6fd8", 1.0, true)
-			lights(1.33, -1.48, 0.62, 0.38, v)
-			for ww in [[0.95, 0.53], [-0.3, 0.53], [-1.0, 0.53], [0.95, -0.53], [-0.3, -0.53], [-1.0, -0.53]]:
-				wheel(ww[0], ww[1], 0.26, v)
+			armored(v, 3.0, true)
 		_:
 			# Werttransport-LKW: Frontlenker-Fahrerhaus, Kofferaufbau, Doppelreifen
 			B(3.8, 0.14, 0.7, "#1b1f22", -0.1, 0.36, 0, v)
