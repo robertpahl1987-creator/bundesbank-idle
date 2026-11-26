@@ -43,6 +43,8 @@ func visual_sig() -> String:
 		parts.append(k + str(int(main.has_flag("t", k))))
 	parts.append("wt%d" % wall_tier())
 	parts.append("pt%d" % police_tier())
+	parts.append(str(S["rooms"]))
+	parts.append("st%d,%d" % [min(int(S["staff"].get("verw", 0)), 6), min(int(S["staff"].get("putz", 0)), 4)])
 	parts.append("cart%d" % cart_count())
 	var caps := {"g1": 8, "g2": 12, "g4": 1, "g5": 1, "g7": 1, "g8": 4, "g9": 4, "g10": 1}
 	for k in caps.keys():
@@ -78,6 +80,7 @@ const ZONES := [
 	[1.0, -13.0, 15.0, 1.0, "werk", "note"],
 	[-15.0, 3.0, -5.0, 11.0, "werk", "lager"],
 	[-4.0, 3.0, 16.0, 12.0, "deliv", ""],
+	[-16.0, -29.0, 16.0, -18.5, "zentrale", ""],
 	[-18.0, -16.0, 30.0, 18.0, "guard", ""],
 ]
 
@@ -333,7 +336,7 @@ func build_static() -> void:
 		B(1.4, 0.07, 0.15, "#ffffff", 2 + i * 4, 0.12, 12.8)
 	B(3, 0.06, 9, "#4a5154", 14.5, 0.1, 8.5)
 	# Bäume
-	var trees := [[-22, -18], [-24, -6], [-21, 6], [-23, 17], [-10, -20], [2, -21], [14, -19], [24, -14], [23, -2], [26, 4], [-6, 21], [6, 20], [22, 20], [-16, 20], [30, 22], [-28, 0], [-30, 12], [34, -8]]
+	var trees := [[-22, -18], [-24, -6], [-21, 6], [-23, 17], [-10, -31], [2, -32], [14, -31], [24, -14], [23, -2], [26, 4], [-6, 21], [6, 20], [22, 20], [-16, 20], [30, 22], [-28, 0], [-30, 12], [34, -8]]
 	for i in range(trees.size()):
 		var x: float = trees[i][0]
 		var z: float = trees[i][1]
@@ -535,6 +538,7 @@ func build() -> void:
 	build_security()
 	build_fleet()
 	build_carts()
+	build_admin()
 	var tb := Time.get_ticks_usec()
 	var nodes_before := dyn.get_child_count()
 	var skip := {}
@@ -949,6 +953,165 @@ func build_wall(wt: int) -> void:
 			if wt >= 4:
 				var sl := B(0.35, 0.3, 0.35, "#fff2c0", c[0], 5.35, c[1], dyn)
 				sl.material_override = lamp_mat
+
+# ---------------------------------------------------------------- Verwaltungsgebäude
+const ROOM_FLOOR := {"lobby": "#d8cfc0", "chef": "#7a5a3a", "hr": "#c9d6e3", "umk": "#b9c4c9", "putz": "#a9b8a3", "kantine": "#e8d9b0", "pause": "#c7b9d9", "leit": "#5a6670", "buch": "#d3d9cf"}
+
+func desk(x: float, z: float, p: Node3D, pc := true) -> void:
+	B(0.9, 0.06, 0.5, "#8a6a4a", x, 0.62, z, p)
+	B(0.06, 0.5, 0.06, "#5a4a3a", x - 0.4, 0.36, z - 0.2, p)
+	B(0.06, 0.5, 0.06, "#5a4a3a", x + 0.4, 0.36, z - 0.2, p)
+	B(0.06, 0.5, 0.06, "#5a4a3a", x - 0.4, 0.36, z + 0.2, p)
+	B(0.06, 0.5, 0.06, "#5a4a3a", x + 0.4, 0.36, z + 0.2, p)
+	if pc:
+		B(0.36, 0.24, 0.03, "#1a1a1a", x, 0.8, z - 0.15, p)
+		var scr := B(0.32, 0.2, 0.01, "#4ab0ff", x, 0.8, z - 0.133, p)
+		scr.material_override = mat("#4ab0ff", 1.0, true)
+	B(0.34, 0.06, 0.34, "#2b3436", x, 0.42, z + 0.45, p)
+	B(0.34, 0.36, 0.06, "#2b3436", x, 0.62, z + 0.6, p)
+
+func plant(x: float, z: float, p: Node3D) -> void:
+	C(0.13, 0.1, 0.25, "#a8744f", x, 0.33, z, p, 8)
+	var lf := sphere(0.22, "#3b8f3a", x, 0.62, z, p)
+	lf.scale = Vector3(1, 1.3, 1)
+
+func build_admin() -> void:
+	var S: Dictionary = main.S
+	var z0 := -24.0
+	var depth := 7.0
+	var w := 3.5
+	var x0 := -15.75
+	# Gesamtgebäude: Bodenplatte, Rückwand mit Fenstern, Dachkante
+	B(9 * w + 0.6, 0.18, depth + 0.6, "#8e9a9e", 0.0, 0.1, z0, dyn)
+	B(9 * w + 0.6, 2.4, 0.3, "#e9e4d8", 0.0, 1.3, z0 - depth / 2.0, dyn)
+	B(9 * w + 0.6, 0.25, 0.4, "#0e8a7c", 0.0, 2.55, z0 - depth / 2.0, dyn)
+	for k in range(18):
+		B(0.9, 0.7, 0.04, "#2c3f4d", x0 + 0.9 + k * 1.75, 1.55, z0 - depth / 2.0 + 0.17, dyn)
+	B(0.3, 1.2, depth, "#e9e4d8", x0 - 0.15, 0.7, z0, dyn)
+	B(0.3, 1.2, depth, "#e9e4d8", x0 + 9 * w + 0.15, 0.7, z0, dyn)
+	var vl := Label3D.new()
+	vl.text = "Verwaltung"
+	vl.font_size = 120
+	vl.pixel_size = 0.011
+	vl.outline_size = 28
+	vl.outline_modulate = Color("#0a4f4a")
+	vl.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	vl.no_depth_test = true
+	vl.position = Vector3(0.0, 4.0, z0 - depth / 2.0)
+	dyn.add_child(vl)
+	var i := 0
+	for r in main.ROOMS:
+		var id: String = r.id
+		var lv: int = int(S["rooms"].get(id, 0))
+		var cx := x0 + w / 2.0 + i * w
+		i += 1
+		# Trennwand
+		if i < 9:
+			B(0.12, 0.7, depth, "#d9d2c2", cx + w / 2.0, 0.55, z0, dyn)
+		if lv == 0:
+			B(w - 0.4, 0.04, depth - 0.6, "#6f7a7e", cx, 0.2, z0, dyn)
+			B(w - 0.2, 0.03, 0.08, "#ffd21a", cx, 0.21, z0 + depth / 2.0 - 0.3, dyn)
+			B(w - 0.2, 0.03, 0.08, "#ffd21a", cx, 0.21, z0 - depth / 2.0 + 0.5, dyn)
+			continue
+		B(w - 0.15, 0.04, depth - 0.4, ROOM_FLOOR.get(id, "#cccccc"), cx, 0.21, z0, dyn)
+		var rl := Label3D.new()
+		rl.text = "%s %d" % [r.n, lv]
+		rl.font_size = 44
+		rl.pixel_size = 0.011
+		rl.outline_size = 12
+		rl.outline_modulate = Color("#13262a")
+		rl.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		rl.no_depth_test = true
+		rl.position = Vector3(cx, 2.2, z0 + 1.5)
+		dyn.add_child(rl)
+		match id:
+			"lobby":
+				B(1.8, 0.7, 0.5, "#0e8a7c", cx, 0.55, z0 - 1.0, dyn)
+				B(1.9, 0.06, 0.6, "#e9e4d8", cx, 0.92, z0 - 1.0, dyn)
+				B(2.0, 0.02, 2.4, "#c8102e", cx, 0.24, z0 + 1.2, dyn)
+				for k in range(min(lv, 4)):
+					plant(cx - 1.3 + (k % 2) * 2.6, z0 - 2.6 + int(k / 2) * 4.6, dyn)
+				if lv >= 2:
+					B(1.2, 0.35, 0.5, "#2a3a5a", cx, 0.4, z0 + 2.6, dyn)
+				person("#0e8a7c", dyn).position = Vector3(cx, 0.22, z0 - 1.5)
+			"chef":
+				B(1.6, 0.08, 0.8, "#4a2f1a", cx, 0.72, z0 - 1.2, dyn)
+				B(1.6, 0.6, 0.08, "#3a2412", cx, 0.42, z0 - 0.82, dyn)
+				B(0.5, 0.75, 0.5, "#111111", cx, 0.58, z0 - 2.0, dyn)
+				B(1.2, 1.8, 0.35, "#5a3a22", cx - 1.0, 1.1, z0 - 3.1, dyn)
+				for k in range(4):
+					B(1.1, 0.25, 0.3, ["#c8102e", "#3d6fb0", "#e2b53c", "#3b8f3a"][k], cx - 1.0, 0.45 + k * 0.4, z0 - 3.05, dyn)
+				B(2.2, 0.02, 2.0, "#8a1a2a", cx, 0.24, z0 + 0.8, dyn)
+				plant(cx + 1.3, z0 - 2.8, dyn)
+				if lv >= 3:
+					B(1.4, 0.4, 0.6, "#2a2f3a", cx, 0.42, z0 + 2.4, dyn)
+				if lv >= 5:
+					var tre := B(0.6, 0.6, 0.6, "#ffc23d", cx + 1.2, 0.5, z0 + 2.6, dyn)
+					tre.material_override = mat("#ffc23d", 1.0, true)
+				person("#f4f5f2", dyn, false, "manager").position = Vector3(cx, 0.22, z0 - 2.0)
+			"hr", "buch":
+				for k in range(min(lv + 1, 6)):
+					desk(cx - 0.8 + (k % 2) * 1.6, z0 - 2.4 + int(k / 2) * 1.8, dyn)
+				if id == "buch":
+					for k in range(lv):
+						B(0.5, 1.2, 0.5, "#9aa3a8", cx + 1.4, 0.8, z0 - 3.0 + k * 0.55, dyn)
+				var nv: int = min(int(S["staff"].get("verw", 0)), lv + 1)
+				for k in range(nv if id == "hr" else min(lv, 3)):
+					person("#3d6fb0", dyn, false, "manager").position = Vector3(cx - 0.8 + (k % 2) * 1.6, 0.22, z0 - 1.95 + int(k / 2) * 1.8)
+			"umk":
+				for k in range(min(lv * 3, 15)):
+					var lx := cx - 1.4 + (k % 5) * 0.7
+					var lz := z0 - 3.0 + int(k / 5) * 2.2
+					B(0.6, 1.6, 0.45, "#7f8f99" if k % 2 == 0 else "#6f7f89", lx, 1.0, lz, dyn)
+					B(0.05, 0.12, 0.02, "#1a1a1a", lx + 0.2, 1.1, lz + 0.24, dyn)
+				B(2.4, 0.12, 0.4, "#a5814f", cx, 0.45, z0 + 2.4, dyn)
+			"putz":
+				B(1.4, 1.5, 0.4, "#9aa3a8", cx - 0.9, 0.95, z0 - 3.0, dyn)
+				for k in range(4):
+					C(0.13, 0.11, 0.25, ["#ffd21a", "#3d6fb0", "#c8102e", "#3b8f3a"][k], cx - 1.3 + k * 0.28, 0.85, z0 - 2.9, dyn, 8)
+				for k in range(min(lv, 4)):
+					var ccx := cx - 0.8 + (k % 2) * 1.6
+					var ccz := z0 + int(k / 2) * 1.8 - 0.6
+					B(0.7, 0.5, 0.45, "#5a4a8a", ccx, 0.5, ccz, dyn)
+					C(0.12, 0.12, 0.3, "#ffd21a", ccx - 0.2, 0.9, ccz, dyn, 8)
+				var np: int = min(int(S["staff"].get("putz", 0)), 4)
+				for k in range(np):
+					person("#7a4a9a", dyn).position = Vector3(cx - 1.0 + k * 0.7, 0.22, z0 + 2.4)
+			"kantine":
+				B(2.6, 0.8, 0.5, "#c9d2d5", cx, 0.6, z0 - 3.0, dyn)
+				for k in range(min(lv * 2, 8)):
+					var tx2 := cx - 0.8 + (k % 2) * 1.6
+					var tz2 := z0 - 1.6 + int(k / 2) * 1.3
+					C(0.4, 0.4, 0.06, "#e9e4d8", tx2, 0.66, tz2, dyn, 12)
+					C(0.05, 0.05, 0.42, "#5a6163", tx2, 0.42, tz2, dyn, 6)
+					B(0.25, 0.3, 0.25, "#c8102e", tx2 - 0.45, 0.38, tz2, dyn)
+					B(0.25, 0.3, 0.25, "#c8102e", tx2 + 0.45, 0.38, tz2, dyn)
+				for k in range(min(lv, 4)):
+					person("#ff7a1a", dyn, true).position = Vector3(cx - 1.25 + (k % 2) * 2.5, 0.22, z0 - 1.6 + int(k / 2) * 1.3)
+			"pause":
+				B(1.8, 0.45, 0.7, "#4a5a8a", cx, 0.45, z0 - 2.6, dyn)
+				B(1.8, 0.5, 0.2, "#3a4a7a", cx, 0.75, z0 - 3.0, dyn)
+				B(0.9, 0.06, 0.5, "#a5814f", cx, 0.5, z0 - 1.6, dyn)
+				B(0.4, 0.7, 0.4, "#2b3436", cx + 1.3, 0.6, z0 + 0.5, dyn)
+				if lv >= 2:
+					var tv := B(1.4, 0.8, 0.06, "#111111", cx, 1.4, z0 - 3.3, dyn)
+					var tvs := B(1.3, 0.7, 0.01, "#4ab0ff", cx, 1.4, z0 - 3.26, dyn)
+					tvs.material_override = mat("#4ab0ff", 1.0, true)
+				for k in range(min(lv, 3)):
+					plant(cx - 1.3, z0 - 0.5 + k * 1.2, dyn)
+			"leit":
+				for k in range(min(lv * 2, 10)):
+					var mx2 := cx - 1.3 + (k % 5) * 0.65
+					var my2 := 0.9 + int(k / 5) * 0.55
+					B(0.6, 0.5, 0.06, "#111111", mx2, my2, z0 - 3.2, dyn)
+					var ms2 := B(0.54, 0.44, 0.01, "#3fd68a" if k % 3 else "#4ab0ff", mx2, my2, z0 - 3.16, dyn)
+					ms2.material_override = mat("#3fd68a" if k % 3 else "#4ab0ff", 1.0, true)
+				desk(cx - 0.7, z0 - 1.5, dyn)
+				desk(cx + 0.7, z0 - 1.5, dyn)
+				for k in range(min(lv, 2)):
+					person("#1f3a5f", dyn, false, "guard").position = Vector3(cx - 0.7 + k * 1.4, 0.22, z0 - 1.05)
+
+const ADMIN_SIG := 1
 
 # ---------------------------------------------------------------- Polizeiwache
 func police_tier() -> int:

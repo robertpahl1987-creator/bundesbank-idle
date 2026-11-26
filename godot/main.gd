@@ -130,6 +130,26 @@ const ACH := [
 ]
 const DAY_LEN := 480.0
 
+const ROOMS := [
+	{id="lobby", n="Eingangshalle", d="Empfang für Kunden und Besucher: +2 % Auftragslohn je Stufe. Voraussetzung für alle anderen Räume.", c=2000.0},
+	{id="chef", n="Büro des Managers", d="Chefbüro: +4 % Herstellung je Stufe.", c=8000.0},
+	{id="hr", n="Personalbüro", d="+4 Plätze für Verwaltungskräfte je Stufe.", c=5000.0},
+	{id="umk", n="Umkleideraum", d="Spinde für 20 weitere Mitarbeiter je Stufe.", c=4000.0},
+	{id="putz", n="Putzraum", d="Platz für 3 Reinigungskräfte je Stufe.", c=3000.0},
+	{id="kantine", n="Kantine", d="+8 Zufriedenheit je Stufe.", c=15000.0},
+	{id="pause", n="Pausenraum", d="+6 Zufriedenheit je Stufe.", c=10000.0},
+	{id="leit", n="Sicherheitszentrale", d="Bildschirmwand und Funk: +10 % Schutz je Stufe.", c=25000.0},
+	{id="buch", n="Buchhaltung", d="Spart Lohnkosten: −5 % Löhne je Stufe.", c=20000.0},
+]
+const STAFF := [
+	{id="arb", n="Produktionsmitarbeiter", d="Bedienen die Maschinen: bis +50 % Herstellung, wenn auf 2 Maschinen 1 Person kommt.", fee=50.0},
+	{id="fahr", n="Fahrer", d="Fahren die Transporter: bis +40 % Auslieferung bei 1 Fahrer je 2 Fahrzeuge.", fee=60.0},
+	{id="wach", n="Wachleute", d="+4 % Schutz je Person (bis +100 %).", fee=80.0},
+	{id="putz", n="Reinigungskräfte", d="+2 % Herstellung je Person (bis +20 %), weniger Maschinenschäden. Braucht den Putzraum.", fee=40.0},
+	{id="verw", n="Verwaltungskräfte", d="+3 % Auftragslohn je Person (bis +60 %), −2 % Löhne (bis −40 %). Braucht das Personalbüro.", fee=100.0},
+]
+const PAY_PERIOD := 300.0
+
 const C_PETROL := Color("#0e8a7c")
 const C_HEAD := Color("#0a4f4a")
 const C_BG := Color("#0c1f24")
@@ -273,7 +293,7 @@ func blank() -> Dictionary:
 	return {cash=25.0, stock=0.0, lv=0, total=0.0, life=0.0, l={"c1": 1}, v={"v1": 1}, t={}, f={}, g={"g1": 2},
 		rep=0, next=90.0, warn=0.0, gang=0, won=0, lost=0, log=[], ts=now(), mig1=1, orders=[], odone=0,
 		mgr={}, auto={}, sites={}, shred=0, gold=0, zins=2, fx=[], gt=0.0, ev_next=240.0, ev_cur="", daily_day=0, streak=0,
-		box_ts=0.0, ach={}, coins=[], fakes=0, gfx=2, hunt_next=60.0, escort=0, museum=0, amb_next=300.0, comm_next=300.0}
+		box_ts=0.0, ach={}, coins=[], fakes=0, gfx=2, rooms={}, staff={}, owed=0.0, payday=300.0, unpaid_until=0.0, paid_total=0.0, hunt_next=60.0, escort=0, museum=0, amb_next=300.0, comm_next=300.0}
 
 func load_game() -> void:
 	S = blank()
@@ -390,7 +410,7 @@ func apply_state(x: Dictionary) -> void:
 	var b := blank()
 	for k in x.keys():
 		b[k] = x[k]
-	for k in ["l", "v", "t", "f", "g", "mgr", "auto", "sites", "ach"]:
+	for k in ["l", "v", "t", "f", "g", "mgr", "auto", "sites", "ach", "rooms", "staff"]:
 		if typeof(b[k]) != TYPE_DICTIONARY:
 			b[k] = {}
 	if typeof(b["log"]) != TYPE_ARRAY:
@@ -473,7 +493,7 @@ func museum_m() -> float:
 	return 1.0 + 0.05 * float(S["rep"]) if int(S["museum"]) > 0 else 1.0
 
 func glob_m() -> float:
-	return (1.0 + 0.03 * int(S["gold"])) * (1.0 + 0.02 * ach_n()) * museum_m() * fx_m("prod")
+	return (1.0 + 0.03 * int(S["gold"])) * (1.0 + 0.02 * ach_n()) * museum_m() * fx_m("prod") * (1.0 + staff_prod_bonus()) * (1.0 + 0.04 * room("chef"))
 
 func hall_m(note: bool) -> float:
 	var m := 1.0
@@ -493,6 +513,70 @@ func line_rate(l: Dictionary) -> float:
 		return 0.0
 	return l.r * c * pow(2.0, ms_n(c)) * base_mul(l)
 
+func room(id: String) -> int:
+	return int(S["rooms"].get(id, 0))
+
+func staff(id: String) -> int:
+	return int(S["staff"].get(id, 0))
+
+func staff_total() -> int:
+	var n := 0
+	for st in STAFF:
+		n += staff(st.id)
+	return n
+
+func staff_cap(id: String) -> int:
+	match id:
+		"putz":
+			return 3 * room("putz")
+		"verw":
+			return 2 + 4 * room("hr")
+	return 10 + 20 * room("umk")
+
+func total_cap() -> int:
+	return 10 + 20 * room("umk")
+
+func morale() -> float:
+	var m := 55.0 + 8.0 * room("kantine") + 6.0 * room("pause")
+	if float(S["gt"]) < float(S["unpaid_until"]):
+		m -= 40.0
+	return clamp(m, 0.0, 100.0)
+
+func morale_f() -> float:
+	return 0.5 + morale() / 200.0
+
+func machines_total() -> int:
+	var n := 0
+	for l in LINES:
+		n += cnt("l", l.id)
+	return n
+
+func vans_total() -> int:
+	var n := 0
+	for v in VAN:
+		n += cnt("v", v.id)
+	return n
+
+func staff_prod_bonus() -> float:
+	var need: float = max(1.0, machines_total() / 2.0)
+	var b: float = 0.5 * min(1.0, staff("arb") / need)
+	b += min(0.2, 0.02 * staff("putz"))
+	return b * morale_f()
+
+func staff_del_bonus() -> float:
+	var need: float = max(1.0, vans_total() / 2.0)
+	return 0.4 * min(1.0, staff("fahr") / need) * morale_f()
+
+## Lohnkosten pro Sekunde: ein Teil des Mehrertrags, den das Personal bringt
+func wage_rate() -> float:
+	if staff_total() == 0:
+		return 0.0
+	var bonus: float = staff_prod_bonus()
+	var share: float = bonus / (1.0 + bonus)
+	var base_w: float = income() * share * 0.35 + staff_total() * 0.05
+	var cut: float = min(0.4, 0.02 * staff("verw")) + 0.05 * room("buch")
+	return base_w * max(0.3, 1.0 - cut)
+
 func zins() -> int:
 	return int(S["zins"])
 
@@ -500,7 +584,7 @@ func pay_m() -> float:
 	return (1.1 - 0.04 * zins()) * (1.0 + 0.05 * int(S["shred"]))
 
 func order_m() -> float:
-	return (1.4 - 0.1 * zins()) * (1.5 if has_d("sites", "hamburg") else 1.0)
+	return (1.4 - 0.1 * zins()) * (1.5 if has_d("sites", "hamburg") else 1.0) * (1.0 + min(0.6, 0.03 * staff("verw"))) * (1.0 + 0.02 * room("lobby"))
 
 func day_phase() -> float:
 	return fposmod(float(S["gt"]) / DAY_LEN, 1.0)
@@ -539,7 +623,7 @@ func prod_calc() -> float:
 	return s
 
 func del_m() -> float:
-	return tm("del") * rep_m() * (2.0 if has_d("sites", "leipzig") else 1.0) * (1.5 if has_d("mgr", "fleet") else 1.0) * fx_m("del")
+	return tm("del") * rep_m() * (2.0 if has_d("sites", "leipzig") else 1.0) * (1.5 if has_d("mgr", "fleet") else 1.0) * fx_m("del") * (1.0 + staff_del_bonus())
 
 func deliv_calc() -> float:
 	var s := 0.0
@@ -560,7 +644,7 @@ func defense() -> float:
 	var s := 0.0
 	for g in GUARD:
 		s += g.v * cnt("g", g.id)
-	return s * (1.25 if has_d("mgr", "sec") else 1.0)
+	return s * (1.25 if has_d("mgr", "sec") else 1.0) * (1.0 + min(1.0, 0.04 * staff("wach"))) * (1.0 + 0.1 * room("leit"))
 
 func threat(m := 1.0) -> float:
 	return m * (8.0 + 4.0 * pow(income(), 0.8)) * (1.0 + 0.02 * int(S["gold"])) * (1.3 - 0.1 * zins()) * (1.25 if is_night() else 1.0)
@@ -929,6 +1013,10 @@ func fling_tick(dt: float) -> void:
 	if scroll_pos <= 0.0 or scroll_pos >= max_scroll():
 		fling = 0.0
 
+func test_pers() -> void:
+	zsub = "pers"
+	render()
+
 func test_zoom() -> void:
 	world.zoom = float(OS.get_environment("BB_Z")) if OS.has_environment("BB_Z") else 3.2
 	world.tx = float(OS.get_environment("BB_TX")) if OS.has_environment("BB_TX") else -6.0
@@ -1122,6 +1210,9 @@ func build_ui() -> void:
 	r1.add_child(cv)
 	l_cash = lbl("0 €", 64, C_GOLD, true)
 	l_inc = lbl("+0 € pro Sekunde", 25, Color(1, 1, 1, 0.85))
+	l_inc.clip_text = true
+	l_inc.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	l_inc.custom_minimum_size = Vector2(10, 0)
 	cv.add_child(l_cash)
 	cv.add_child(l_inc)
 	b_risk = btn("Risiko 0 %", func(): go("guard"), "ghost", 210)
@@ -1832,7 +1923,7 @@ func update_ui() -> void:
 	var sp: float = float(S["stock"]) / c * 100.0
 	var rk := risk()
 	l_cash.text = fmt(S["cash"])
-	l_inc.text = "+%s pro Sekunde" % fmt(income())
+	l_inc.text = ("+%s/s · Löhne −%s/s" % [fmt(income()), fmt(wage_rate())]) if wage_rate() > 0.0 else "+%s pro Sekunde" % fmt(income())
 	l_prod.text = fmt(p) + "/s"
 	l_del.text = fmt(d) + "/s"
 	l_stock.text = fmt(S["stock"])
@@ -1899,6 +1990,8 @@ func update_ui() -> void:
 				r.desc.text = ("Gesperrt: benötigt %d Sicherheitsmerkmale (du hast %d)" % [int(l.req), feat_n()]) if lk else "Bauplatz frei · " + l.d
 		return
 	update_extras()
+	if view == "zentrale":
+		update_staff_ui()
 	if view == "bank":
 		if refs.has("box"):
 			var w := box_wait()
@@ -2027,12 +2120,33 @@ func extras_tick(dt: float) -> void:
 		if f.until > gt:
 			keep.append(f)
 	S["fx"] = keep
+	# Löhne und Zahltag
+	S["owed"] = float(S["owed"]) + wage_rate() * dt
+	S["payday"] = float(S["payday"]) - dt
+	if S["payday"] <= 0.0:
+		S["payday"] = PAY_PERIOD
+		var owed: float = S["owed"]
+		if owed > 0.0:
+			if float(S["cash"]) >= owed:
+				S["cash"] -= owed
+				S["paid_total"] = float(S["paid_total"]) + owed
+				add_log("Zahltag: %s Löhne an %d Mitarbeiter gezahlt." % [fmt(owed), staff_total()], "good")
+			else:
+				S["paid_total"] = float(S["paid_total"]) + float(S["cash"])
+				S["cash"] = 0.0
+				S["unpaid_until"] = gt + 300.0
+				add_log("Zahltag: Löhne konnten nicht voll gezahlt werden! Die Belegschaft ist 5 Minuten unzufrieden.", "bad")
+		S["owed"] = 0.0
 	# Ereignisse
 	if S["ev_cur"] == "" and S["warn"] <= 0.0:
 		S["ev_next"] = float(S["ev_next"]) - dt
 		if S["ev_next"] <= 0.0 and income() > 0.5:
 			S["ev_next"] = 180.0 + randf() * 240.0
 			var ev: Dictionary = EVENTS[randi() % EVENTS.size()]
+			if ev.id == "break" and randf() < min(0.8, 0.1 * staff("putz")):
+				ev = EVENTS[5]
+			if morale() < 50.0 and randf() < 0.4:
+				ev = EVENTS[0]
 			S["ev_cur"] = ev.id
 			show_event(ev)
 	# Gedenkmünzen
@@ -2402,6 +2516,50 @@ func upgrade_van(i: int) -> void:
 	save_game()
 	update_ui()
 
+func room_cost(id: String) -> float:
+	for r in ROOMS:
+		if r.id == id:
+			return r.c * pow(4.0, room(id))
+	return 1e30
+
+func hire(id: String, delta: int) -> void:
+	invalidate()
+	var cur := staff(id)
+	if delta > 0:
+		var room_left: int = min(staff_cap(id) - cur, total_cap() - staff_total())
+		if id in ["putz", "verw"]:
+			room_left = min(staff_cap(id) - cur, total_cap() - staff_total())
+		var n: int = min(delta, room_left)
+		if n <= 0:
+			add_log("Kein Platz: Umkleideraum, Putzraum oder Personalbüro ausbauen.", "bad")
+			return
+		var fee: float = 0.0
+		for st in STAFF:
+			if st.id == id:
+				fee = st.fee * n * max(1.0, income() / 200.0)
+		if float(S["cash"]) < fee:
+			return
+		S["cash"] -= fee
+		S["staff"][id] = cur + n
+		add_log("%d neue %s eingestellt." % [n, staff_name(id)], "good")
+	else:
+		S["staff"][id] = max(0, cur + delta)
+	world.dirty = true
+	save_game()
+	render()
+
+func staff_name(id: String) -> String:
+	for st in STAFF:
+		if st.id == id:
+			return st.n
+	return id
+
+func hire_fee(id: String, n: int) -> float:
+	for st in STAFF:
+		if st.id == id:
+			return st.fee * n * max(1.0, income() / 200.0)
+	return 0.0
+
 func buy_extra(k: String) -> void:
 	invalidate()
 	var parts := k.split(":")
@@ -2438,6 +2596,11 @@ func buy_extra(k: String) -> void:
 				S["cash"] -= escort_cost()
 				S["escort"] = int(S["escort"]) + 1
 				add_log("Begleitschutz verstärkt (Stufe %d)." % int(S["escort"]), "good")
+		"room":
+			if room(id) < 5 and (id == "lobby" or room("lobby") > 0) and S["cash"] >= room_cost(id):
+				S["cash"] -= room_cost(id)
+				S["rooms"][id] = room(id) + 1
+				add_log("%s auf Stufe %d ausgebaut." % [room_title(id), room(id)], "good")
 		"museum":
 			if int(S["museum"]) == 0 and int(S["rep"]) >= 1 and S["cash"] >= 1e6:
 				S["cash"] -= 1e6
@@ -2446,6 +2609,12 @@ func buy_extra(k: String) -> void:
 	world.dirty = true
 	save_game()
 	render()
+
+func room_title(id: String) -> String:
+	for r in ROOMS:
+		if r.id == id:
+			return r.n
+	return id
 
 func extra_card(title: String, desc: String, key: String, label: String, ok: bool, done := false) -> void:
 	var p := card()
@@ -2466,8 +2635,31 @@ func section(t: String) -> void:
 	var l := lbl(t, 30, C_GOLD, true)
 	content.add_child(l)
 
+var zsub := "geb"
+
 func render_zentrale() -> void:
-	head_title("Zentrale", "Personal, Standorte, Gold, Schredder, Leitzins und Museum.")
+	var seg := PanelContainer.new()
+	seg.add_theme_stylebox_override("panel", sbox(C_CARD, 20, C_LINE, 2, 6))
+	content.add_child(seg)
+	var sh := hb(6)
+	seg.add_child(sh)
+	for it in [["geb", "Gebäude"], ["pers", "Personal"], ["mehr", "Leitung & mehr"]]:
+		var key: String = it[0]
+		var on := zsub == key
+		var b := btn(it[1], func():
+			zsub = key
+			render(), "main" if on else "light", 0)
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		if not on:
+			b.add_theme_stylebox_override("normal", sbox(Color(0, 0, 0, 0), 16, Color(0, 0, 0, 0), 0, 6))
+		sh.add_child(b)
+	if zsub == "geb":
+		render_rooms()
+		return
+	if zsub == "pers":
+		render_staff()
+		return
+	head_title("Leitung & mehr", "Werksleiter, Standorte, Gold, Schredder, Leitzins und Museum.")
 	section("Werksleitung")
 	for m in MGR:
 		if has_d("mgr", m.id):
@@ -2518,6 +2710,91 @@ func render_zentrale() -> void:
 		mv.add_child(lbl("Ausstellungsstücke: %d Währungsreformen, %d Gedenkmünzen. Bonus: +%d %% auf alles." % [int(S["rep"]), S["coins"].size(), int(S["rep"]) * 5], 23, C_MUT, false, true))
 	else:
 		extra_card("Bundesbank-Museum", "Ab der ersten Währungsreform baubar. Jede Reform wird ausgestellt: +5 % Herstellung je Reform.", "museum", fmt(1e6), int(S["rep"]) >= 1 and S["cash"] >= 1e6)
+
+func render_rooms() -> void:
+	head_title("Verwaltungsgebäude", "Baue die Räume der Bundesbank aus. Du siehst sie im 3D-Werk oben hinter den Hallen.")
+	for r in ROOMS:
+		var lv := room(r.id)
+		var locked: bool = r.id != "lobby" and room("lobby") == 0
+		var label := "Voll" if lv >= 5 else ("Bauen " if lv == 0 else "Stufe %d · " % (lv + 1)) + fmt(room_cost(r.id))
+		var d: String = r.d + ("  (erst Eingangshalle bauen)" if locked else "")
+		extra_card("%s · Stufe %d/5" % [r.n, lv], d, "room:" + r.id, label, not locked and S["cash"] >= room_cost(r.id), lv >= 5)
+
+func render_staff() -> void:
+	head_title("Personal", "Mehr Mitarbeiter bringen mehr Leistung – aber sie wollen jeden Zahltag ihren Lohn.")
+	var p := card()
+	var v := vb(6)
+	p.add_child(v)
+	v.add_child(lbl("Belegschaft", 29, C_INK, true))
+	var info := lbl("", 23, C_MUT, false, true)
+	v.add_child(info)
+	var mb := pbar(12)
+	v.add_child(mb)
+	refs["staffinfo"] = {desc=info, bar=mb}
+	amount_row()
+	for st in STAFF:
+		var c := card()
+		var cv := vb(6)
+		c.add_child(cv)
+		var top := hb(10)
+		cv.add_child(top)
+		var t := lbl(st.n, 28, C_INK, true, true)
+		t.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		top.add_child(t)
+		var cnt_l := lbl("", 27, C_GOLD, true)
+		top.add_child(cnt_l)
+		cv.add_child(lbl(st.d, 22, C_MUT, false, true))
+		var row := hb(10)
+		cv.add_child(row)
+		var eff := lbl("", 22, C_GREEN, false, true)
+		row.add_child(eff)
+		var id: String = st.id
+		var minus := btn("−", func(): hire(id, -(int(amt) if amt != "max" else 10)), "light", 80)
+		row.add_child(minus)
+		var plus := btn("", func(): hire(id, hire_count(id)), "main", 230)
+		row.add_child(plus)
+		refs["st:" + id] = {cnt=cnt_l, eff=eff, plus=plus, minus=minus}
+
+func hire_count(id: String) -> int:
+	var room_left: int = max(0, min(staff_cap(id) - staff(id), total_cap() - staff_total()))
+	if amt == "max":
+		var n := room_left
+		while n > 0 and hire_fee(id, n) > float(S["cash"]):
+			n -= 1
+		return max(1, n)
+	return max(1, min(int(amt), max(1, room_left)))
+
+func update_staff_ui() -> void:
+	if refs.has("staffinfo"):
+		var r: Dictionary = refs["staffinfo"]
+		var unpaid := float(S["gt"]) < float(S["unpaid_until"])
+		r.desc.text = "%d von %d Plätzen belegt (Umkleideraum) · Lohnkosten %s/s · Zahltag in %s, offen %s · Zufriedenheit %d %%%s" % [staff_total(), total_cap(), fmt(wage_rate()), dur_txt(float(S["payday"])), fmt(S["owed"]), int(morale()), " · Löhne nicht gezahlt!" if unpaid else ""]
+		r.bar.value = morale()
+	for st in STAFF:
+		var key: String = "st:" + st.id
+		if not refs.has(key):
+			continue
+		var r2: Dictionary = refs[key]
+		var n := staff(st.id)
+		r2.cnt.text = "%d / %d" % [n, staff_cap(st.id)]
+		var e := ""
+		match st.id:
+			"arb":
+				e = "Bedarf: %d · Bonus Herstellung +%d %%" % [int(ceil(machines_total() / 2.0)), int(staff_prod_bonus() * 100)]
+			"fahr":
+				e = "Bedarf: %d · Bonus Auslieferung +%d %%" % [int(ceil(vans_total() / 2.0)), int(staff_del_bonus() * 100)]
+			"wach":
+				e = "Schutz +%d %%" % int(min(1.0, 0.04 * n) * 100)
+			"putz":
+				e = "Herstellung +%d %%" % int(min(0.2, 0.02 * n) * 100) if room("putz") > 0 else "Erst den Putzraum bauen"
+			"verw":
+				e = "Auftragslohn +%d %% · Löhne −%d %%" % [int(min(0.6, 0.03 * n) * 100), int(min(0.4, 0.02 * n) * 100)]
+		r2.eff.text = e
+		var hc := hire_count(st.id)
+		var full: bool = staff_cap(st.id) - n <= 0 or total_cap() - staff_total() <= 0
+		r2.plus.text = "Kein Platz" if full else ("+%d · %s" % [hc, fmt(hire_fee(st.id, hc))])
+		r2.plus.disabled = full or float(S["cash"]) < hire_fee(st.id, hc)
+		r2.minus.disabled = n <= 0
 
 func make_grabber() -> Texture2D:
 	var img := Image.create(44, 44, false, Image.FORMAT_RGBA8)
