@@ -249,7 +249,7 @@ func _on_download_done(result: int, code: int, _h: PackedStringArray, _b: Packed
 	if err != OK:
 		download_failed()
 		return
-	l_update.text = "Android fragt jetzt, ob die Aktualisierung installiert werden soll. Tippe auf „Installieren“. Beim ersten Mal musst du einmalig erlauben, dass diese App Updates installieren darf.\nErscheint nichts, tippe auf „Im Browser laden“."
+	l_update.text = "Fast fertig: Android verlangt aus Sicherheitsgründen noch einen Tipp auf „Aktualisieren“ bzw. „Installieren“. Beim ersten Mal musst du einmalig erlauben, dass diese App Updates installieren darf.\nErscheint nichts, tippe auf „Im Browser laden“."
 	upd_btn.disabled = false
 	upd_btn.text = "Erneut öffnen"
 	upd_browser.visible = true
@@ -2115,6 +2115,10 @@ func _on_update_response(result: int, code: int, _headers: PackedStringArray, bo
 		upd_btn.disabled = false
 		upd_bar.visible = false
 		get_node("UpdRoot").visible = true
+		if OS.get_name() == "Android":
+			# automatisch laden und die Installation sofort öffnen
+			l_update.text = "Version %s wird automatisch geladen und gleich installiert. Dein Spielstand bleibt erhalten." % tag
+			start_download()
 	elif manual_check:
 		add_log("Du hast die neueste Version (%s)." % ProjectSettings.get_setting("application/config/version", "?"), "good")
 
