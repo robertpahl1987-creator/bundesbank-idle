@@ -42,8 +42,9 @@ func visual_sig() -> String:
 	for k in ["t8", "t11", "t12"]:
 		parts.append(k + str(int(main.has_flag("t", k))))
 	parts.append("wt%d" % wall_tier())
+	parts.append("pt%d" % police_tier())
 	parts.append("cart%d" % cart_count())
-	var caps := {"g1": 8, "g2": 12, "g4": 1, "g5": 1, "g6": 3, "g7": 1, "g8": 4, "g9": 4, "g10": 1}
+	var caps := {"g1": 8, "g2": 12, "g4": 1, "g5": 1, "g7": 1, "g8": 4, "g9": 4, "g10": 1}
 	for k in caps.keys():
 		parts.append(k + str(min(cnt("g", k), caps[k])))
 	var tot := 0
@@ -226,10 +227,20 @@ func person(col: String, p: Node3D, helmet := false, style := "") -> Node3D:
 	B(0.04, 0.035, 0.01, "#1a1a1a", 0.06, 1.06, 0.123, g)
 	B(0.08, 0.02, 0.01, "#8a4a3a", 0, 0.98, 0.123, g)
 	match style:
-		"guard", "police":
+		"police":
+			B(0.37, 0.41, 0.23, "#1f3a66", 0, 0.66, 0, g)
+			B(0.11, 0.39, 0.13, "#1f3a66", -0.24, 0.65, 0, g)
+			B(0.11, 0.39, 0.13, "#1f3a66", 0.24, 0.65, 0, g)
+			B(0.37, 0.07, 0.235, "#e8ecee", 0, 0.76, 0.003, g)
+			B(0.2, 0.05, 0.01, "#ffd21a", 0, 0.68, 0.122, g)
+			B(0.28, 0.08, 0.28, "#1f3a66", 0, 1.21, 0, g)
+			B(0.29, 0.03, 0.29, "#ffd21a", 0, 1.18, 0, g)
+			B(0.27, 0.025, 0.11, "#111111", 0, 1.17, 0.17, g)
+			B(0.36, 0.05, 0.23, "#111111", 0, 0.5, 0, g)
+		"guard":
 			B(0.27, 0.07, 0.27, "#16233a", 0, 1.2, 0, g)
 			B(0.27, 0.025, 0.1, "#16233a", 0, 1.17, 0.16, g)
-			B(0.37, 0.12, 0.23, "#ffd21a" if style == "police" else "#c9d2d5", 0, 0.72, 0.005, g)
+			B(0.37, 0.12, 0.23, "#c9d2d5", 0, 0.72, 0.005, g)
 		"soldier":
 			B(0.29, 0.1, 0.29, "#3f4a2a", 0, 1.2, 0, g)
 			B(0.37, 0.3, 0.24, "#4b5a32", 0, 0.68, 0, g)
@@ -939,6 +950,168 @@ func build_wall(wt: int) -> void:
 				var sl := B(0.35, 0.3, 0.35, "#fff2c0", c[0], 5.35, c[1], dyn)
 				sl.material_override = lamp_mat
 
+# ---------------------------------------------------------------- Polizeiwache
+func police_tier() -> int:
+	var n := cnt("g", "g6")
+	if n >= 10:
+		return 4
+	if n >= 6:
+		return 3
+	if n >= 3:
+		return 2
+	if n >= 1:
+		return 1
+	return 0
+
+var police_mat: StandardMaterial3D
+
+func police_light() -> StandardMaterial3D:
+	if police_mat == null:
+		police_mat = StandardMaterial3D.new()
+		police_mat.albedo_color = Color("#2f6bff")
+		police_mat.emission_enabled = true
+		police_mat.emission = Color("#2f6bff")
+		police_mat.emission_energy_multiplier = 0.4
+	return police_mat
+
+## Realistischer Streifenwagen: Karosserie, Kabine mit Scheiben, Motorhaube, Lichter, Lichtbalken
+func police_car(body_col := "#e8ecee", band_col := "#1f4fbf", van := false) -> Node3D:
+	var c := Node3D.new()
+	var L := 2.4 if van else 2.0
+	var cabin_h := 0.55 if van else 0.38
+	# Fahrgestell und Karosserie
+	B(L, 0.12, 0.92, "#1b1f22", 0, 0.2, 0, c)
+	B(L, 0.36, 0.9, body_col, 0, 0.42, 0, c)
+	# Zierstreifen (Polizei-Design)
+	B(L + 0.01, 0.12, 0.91, band_col, 0, 0.45, 0, c)
+	B(L * 0.5, 0.04, 0.912, "#ffd21a" if not van else band_col, -0.1, 0.53, 0, c)
+	# Kabine mit Scheiben
+	var cab_l := L * (0.7 if van else 0.5)
+	var cab_x := -0.15 if van else -0.08
+	B(cab_l, cabin_h, 0.84, body_col, cab_x, 0.6 + cabin_h / 2.0, 0, c)
+	B(cab_l + 0.02, cabin_h * 0.62, 0.86, "#1e2a33", cab_x, 0.62 + cabin_h * 0.45, 0, c)
+	B(0.05, cabin_h * 0.6, 0.78, "#2c3f4d", cab_x + cab_l / 2.0 + 0.01, 0.62 + cabin_h * 0.45, 0, c)
+	# Dach und Lichtbalken
+	B(cab_l, 0.04, 0.84, body_col, cab_x, 0.6 + cabin_h + 0.02, 0, c)
+	var bar := B(0.24, 0.08, 0.7, "#2f6bff", cab_x, 0.66 + cabin_h, 0, c)
+	bar.material_override = police_light()
+	# Front/Heck: Scheinwerfer, Rücklichter, Stoßstangen
+	var hl := L / 2.0
+	for zz in [-0.3, 0.3]:
+		var h1 := B(0.03, 0.08, 0.18, "#fffbe0", hl + 0.005, 0.45, zz, c)
+		h1.material_override = mat("#fffbe0", 1.0, true)
+		var h2 := B(0.03, 0.08, 0.16, "#ff2030", -hl - 0.005, 0.45, zz, c)
+		h2.material_override = mat("#ff2030", 1.0, true)
+	B(0.06, 0.1, 0.94, "#2b3033", hl, 0.27, 0, c)
+	B(0.06, 0.1, 0.94, "#2b3033", -hl, 0.27, 0, c)
+	# Räder mit Felgen
+	for w in [[-L * 0.32, 0.46], [L * 0.32, 0.46], [-L * 0.32, -0.46], [L * 0.32, -0.46]]:
+		var tire := C(0.19, 0.19, 0.14, "#141414", w[0], 0.19, w[1], c, 12)
+		tire.rotation.x = PI / 2
+		var rim := C(0.11, 0.11, 0.15, "#b8c0c4", w[0], 0.19, w[1], c, 10)
+		rim.rotation.x = PI / 2
+	# Seitenspiegel
+	B(0.08, 0.06, 0.06, "#1b1f22", cab_x + cab_l / 2.0 - 0.05, 0.75, 0.48, c)
+	B(0.08, 0.06, 0.06, "#1b1f22", cab_x + cab_l / 2.0 - 0.05, 0.75, -0.48, c)
+	return c
+
+func police_label(txt: String, pos: Vector3, size := 72) -> void:
+	var l := Label3D.new()
+	l.text = txt
+	l.font_size = size
+	l.pixel_size = 0.011
+	l.outline_size = 20
+	l.modulate = Color("#ffffff")
+	l.outline_modulate = Color("#1f3a66")
+	l.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	l.no_depth_test = true
+	l.position = pos
+	dyn.add_child(l)
+
+func build_police(pt: int) -> void:
+	# Grundstück neben dem Werk (rechts, nördlich der Straße)
+	var gx := 23.5
+	var gz := 6.5
+	B(9.5, 0.08, 9.0, "#8e9a9e", gx, 0.09, gz, dyn)
+	B(9.5, 0.06, 2.2, "#4a5154", gx, 0.12, 10.2, dyn)
+	# Parkplatzmarkierungen
+	for k in range(6):
+		B(0.08, 0.02, 1.6, "#ffffff", 19.6 + k * 1.6, 0.16, 9.8, dyn)
+	# Hauptgebäude: wächst mit der Stufe
+	var floors := 1 if pt == 1 else (2 if pt <= 3 else 3)
+	var bw := 4.2 if pt == 1 else 6.0
+	var bd := 3.2
+	var bx := gx - (0.0 if pt == 1 else 0.9)
+	var bz := gz - 1.6
+	for f in range(floors):
+		var y0 := 0.12 + f * 1.25
+		B(bw, 1.2, bd, "#eef0ec", bx, y0 + 0.6, bz, dyn)
+		B(bw + 0.02, 0.22, bd + 0.02, "#1f4fbf", bx, y0 + 1.08, bz, dyn)
+		# Fensterreihe vorne und seitlich
+		for k in range(int(bw / 0.9)):
+			B(0.55, 0.45, 0.04, "#2c3f4d", bx - bw / 2.0 + 0.55 + k * 0.9, y0 + 0.62, bz + bd / 2.0 + 0.01, dyn)
+		for k in range(3):
+			B(0.04, 0.45, 0.55, "#2c3f4d", bx + bw / 2.0 + 0.01, y0 + 0.62, bz - 1.0 + k * 1.0, dyn)
+	var top := 0.12 + floors * 1.25
+	B(bw + 0.2, 0.14, bd + 0.2, "#5a6163", bx, top + 0.05, bz, dyn)
+	# Eingang mit Vordach und blauem Schild
+	B(1.2, 0.9, 0.06, "#3a4a5a", bx, 0.57, bz + bd / 2.0 + 0.02, dyn)
+	B(1.8, 0.08, 0.8, "#1f4fbf", bx, 1.2, bz + bd / 2.0 + 0.4, dyn)
+	var sign := B(1.6, 0.35, 0.05, "#1f4fbf", bx, top - 0.35, bz + bd / 2.0 + 0.04, dyn)
+	sign.material_override = mat("#2f6bff", 1.0, true)
+	police_label("POLIZEI", Vector3(bx, top + 1.0, bz + bd / 2.0), 80)
+	# Fahnenmast
+	C(0.04, 0.05, 3.2, "#c9d2d5", bx + bw / 2.0 + 0.8, 1.7, bz + bd / 2.0 + 0.6, dyn, 6)
+	B(0.04, 0.22, 0.5, "#111111", bx + bw / 2.0 + 0.8, 3.05, bz + bd / 2.0 + 0.85, dyn)
+	B(0.04, 0.22, 0.5, "#dd0000", bx + bw / 2.0 + 0.8, 2.83, bz + bd / 2.0 + 0.85, dyn)
+	B(0.04, 0.22, 0.5, "#ffce00", bx + bw / 2.0 + 0.8, 2.61, bz + bd / 2.0 + 0.85, dyn)
+	# Garagen ab Stufe 2
+	if pt >= 2:
+		var gx2 := bx + bw / 2.0 + 1.6
+		B(2.8, 1.5, 3.0, "#d9dcd6", gx2, 0.87, bz, dyn)
+		for k in range(2):
+			B(1.0, 1.0, 0.05, "#5a6163", gx2 - 0.7 + k * 1.4, 0.65, bz + 1.52, dyn)
+		B(3.0, 0.12, 3.2, "#5a6163", gx2, 1.68, bz, dyn)
+	# Funkmast ab Stufe 3
+	if pt >= 3:
+		for o in [[-0.25, -0.25], [0.25, -0.25], [-0.25, 0.25], [0.25, 0.25]]:
+			B(0.06, 3.6, 0.06, "#c8102e" if int(o[0] * 4) % 2 == 0 else "#e8ecee", bx - bw / 2.0 + 0.6 + o[0], top + 1.9, bz - 0.8 + o[1], dyn)
+		var tip := B(0.2, 0.2, 0.2, "#ff2030", bx - bw / 2.0 + 0.6, top + 3.8, bz - 0.8, dyn)
+		tip.material_override = mat("#ff2030", 1.0, true)
+	# Hubschrauber-Landeplatz auf dem Dach ab Stufe 4
+	if pt >= 4:
+		B(2.4, 0.06, 2.4, "#2b3436", bx + 1.2, top + 0.15, bz, dyn)
+		B(1.2, 0.07, 0.2, "#ffffff", bx + 1.2, top + 0.19, bz, dyn)
+		var heli := Node3D.new()
+		dyn.add_child(heli)
+		B(1.3, 0.55, 0.6, "#1f4fbf", 0, 0.35, 0, heli)
+		B(0.9, 0.12, 0.12, "#1f4fbf", -0.95, 0.45, 0, heli)
+		B(0.5, 0.3, 0.55, "#2c3f4d", 0.45, 0.42, 0, heli)
+		B(2.4, 0.03, 0.12, "#2b3436", 0, 0.72, 0, heli)
+		heli.position = Vector3(bx + 1.2, top + 0.18, bz)
+		merge_deep(heli)
+	# Streifenwagen auf dem Parkplatz
+	var ncar: int = [0, 1, 3, 5, 7][pt]
+	for k in range(ncar):
+		var car := police_car()
+		car.rotation.y = PI / 2
+		car.position = Vector3(19.6 + 0.8 + k * 1.6 if k < 6 else 26.0, 0.0, 9.8 if k < 6 else 12.0)
+		dyn.add_child(car)
+		merge_deep(car)
+	# Ein Streifenwagen fährt Streife
+	var pc := police_car()
+	dyn.add_child(pc)
+	merge_deep(pc)
+	anim["patrol"] = pc
+	# Polizisten vor der Wache
+	var nofc: int = [0, 2, 4, 6, 8][pt]
+	for k in range(nofc):
+		var cop := person("#1f3a66", dyn, false, "police")
+		cop.position = Vector3(bx - 1.6 + k * 0.55, 0.12, bz + bd / 2.0 + 1.3 + (k % 2) * 0.4)
+		cop.rotation.y = randf() * 0.6 - 0.3
+
+const PATROL := [[19.0, 12.3], [44.0, 12.3], [44.0, 13.4], [19.0, 13.4], [19.0, 12.3]]
+
 func build_security() -> void:
 	var g3 := cnt("g", "g3")
 	var wt := wall_tier()
@@ -976,22 +1149,21 @@ func build_security() -> void:
 			las.material_override = mat("#ff2030", 1.0, true)
 		B(0.18, 1.9, 0.18, "#2b3436", -5.9, 1.0, 5.95, dyn)
 		B(0.18, 1.9, 0.18, "#2b3436", -5.9, 1.0, 8.05, dyn)
-	for j in range(min(cnt("g", "g6"), 3)):
-		var x2 := 20.0 + j * 2.6
-		B(2, 0.7, 1, "#f4f5f2", x2, 0.5, 10.2, dyn)
-		B(2, 0.12, 1.02, "#2a5bd7", x2, 0.55, 10.2, dyn)
-		B(1, 0.4, 0.9, "#f4f5f2", x2, 1.0, 10.2, dyn)
-		var bl := B(0.3, 0.15, 0.3, "#3a6fd8", x2, 1.3, 10.2, dyn)
-		bl.material_override = mat("#3a6fd8", 1.0, true)
+	var pt := police_tier()
+	if pt > 0:
+		build_police(pt)
 	if cnt("g", "g7") > 0:
-		B(2.6, 1.3, 1.2, "#1d2326", 21, 0.8, 16, dyn)
+		var sek := police_car("#1d2326", "#1d2326", true)
+		sek.position = Vector3(27.5, 0.0, 16.4)
+		dyn.add_child(sek)
+		merge_deep(sek)
 		for j in range(3):
-			person("#1d2326", dyn, false, "guard").position = Vector3(19 + j * 0.7, 0.1, 17.5)
+			person("#1d2326", dyn, false, "guard").position = Vector3(25.5 + j * 0.7, 0.1, 17.4)
 	if cnt("g", "g8") > 0:
-		B(3, 1.4, 1.3, "#4b5a32", 24, 0.85, 9.6, dyn)
-		B(1.2, 1, 1.3, "#4b5a32", 26, 0.65, 9.6, dyn)
+		B(3, 1.4, 1.3, "#4b5a32", 21.5, 0.85, 16.4, dyn)
+		B(1.2, 1, 1.3, "#4b5a32", 23.5, 0.65, 16.4, dyn)
 		for j in range(min(cnt("g", "g8"), 4)):
-			person("#4b5a32", dyn, false, "soldier").position = Vector3(19.5 + j * 0.8, 0.1, 14.4)
+			person("#4b5a32", dyn, false, "soldier").position = Vector3(19.5 + j * 0.8, 0.1, 15.0)
 	for j in range(min(cnt("g", "g9"), 4)):
 		var d := Node3D.new()
 		B(0.6, 0.15, 0.6, "#2b3436", 0, 0, 0, d)
@@ -1389,6 +1561,13 @@ func _process(dt: float) -> void:
 		var u := fposmod(t * 0.04, 1.0)
 		anim.plane.position = Vector3(-40 + u * 90, 12, -30 + u * 50)
 		anim.plane.rotation.y = -atan2(50, 90)
+	if anim.has("patrol") and is_instance_valid(anim.patrol):
+		var pp2 := path_pos(PATROL, fposmod(t * 0.02, 1.0))
+		anim.patrol.position = Vector3(pp2[0], 0.0, pp2[1])
+		anim.patrol.rotation.y = pp2[2]
+	if police_mat != null:
+		var alarm: bool = main.S["warn"] > 0.0
+		police_mat.emission_energy_multiplier = (4.0 if fposmod(t * 4.0, 1.0) < 0.5 else 0.3) if alarm else 0.35
 	if anim.has("carts"):
 		for c in anim.carts:
 			var u := fposmod(t * 0.045 + c.ph, 1.0)

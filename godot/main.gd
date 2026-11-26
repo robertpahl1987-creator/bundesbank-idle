@@ -59,7 +59,7 @@ const GUARD := [
 	{id="g3", n="Stahltor", d="Schutz +40 · Zaun und Tor ums Werk", b=8000.0, v=40},
 	{id="g4", n="Alarmanlage", d="Schutz +110 · Alarmlicht auf dem Tresor", b=6e4, v=110},
 	{id="g5", n="Hochsicherheitstresor", d="Schutz +350 · senkt Beuteverlust", b=5e5, v=350},
-	{id="g6", n="Polizeiwache vor Ort", d="Schutz +1.200 · Streifenwagen am Tor", b=5e6, v=1200},
+	{id="g6", n="Polizeiwache vor Ort", d="Schutz +1.200 · baut die Wache aus (ab 3, 6, 10: größer)", b=5e6, v=1200},
 	{id="g7", n="SEK-Bereitschaft", d="Schutz +4.500", b=5e7, v=4500},
 	{id="g8", n="Bundeswehr-Objektschutz", d="Schutz +18.000", b=4e8, v=18000},
 	{id="g9", n="Drohnenabwehr", d="Schutz +70.000", b=4e9, v=70000},
