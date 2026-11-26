@@ -852,11 +852,7 @@ func step(dt: float) -> void:
 	earn(d * pay_m())
 
 func offline_catchup() -> void:
-	var away: float = clamp(now() - float(S["ts"]), 0.0, 8.0 * 3600.0)
-	if away > 30.0 and income() > 0.0:
-		var v := income() * away * 0.5
-		earn(v)
-		add_log("Während du weg warst, wurden %s ausgeliefert (50 %%, max. 8 Std.)." % fmt(v), "good")
+	# Offline-Einnahmen sind abgeschaltet: Geld gibt es nur, solange das Spiel läuft
 	S["ts"] = now()
 
 func raid_tick(dt: float) -> void:
