@@ -8,7 +8,7 @@ var meshes := {}
 var dyn: Node3D
 var anim := {}
 var cam: Camera3D
-var zoom := 1.15
+var zoom := 1.0
 var tx := -1.0
 var tz := -3.0
 var t := 0.0
@@ -80,7 +80,8 @@ const ZONES := [
 	[1.0, -13.0, 15.0, 1.0, "werk", "note"],
 	[-15.0, 3.0, -5.0, 11.0, "werk", "lager"],
 	[-4.0, 3.0, 16.0, 12.0, "deliv", ""],
-	[-16.0, -29.0, 16.0, -18.5, "zentrale", ""],
+	[-16.0, -37.0, 16.0, -27.0, "zentrale", ""],
+	[25.0, -4.0, 37.0, 9.5, "guard", ""],
 	[-18.0, -16.0, 30.0, 18.0, "guard", ""],
 ]
 
@@ -311,18 +312,178 @@ func _ready() -> void:
 	apply_quality()
 	fit()
 
+# ---------------------------------------------------------------- Einrichtung und Fassaden
+func chair(x: float, z: float, p: Node3D = null, rot := 0.0) -> void:
+	var c := Node3D.new()
+	B(0.32, 0.05, 0.32, "#2b3436", 0, 0.42, 0, c)
+	B(0.32, 0.36, 0.05, "#2b3436", 0, 0.62, -0.15, c)
+	B(0.04, 0.4, 0.04, "#7a8489", 0, 0.21, 0, c)
+	B(0.3, 0.03, 0.04, "#7a8489", 0, 0.03, 0, c)
+	B(0.04, 0.03, 0.3, "#7a8489", 0, 0.03, 0, c)
+	c.position = Vector3(x, 0.15, z)
+	c.rotation.y = rot
+	(p if p != null else self).add_child(c)
+
+func office_desk(x: float, z: float, p: Node3D = null) -> void:
+	B(1.0, 0.05, 0.55, "#c9b28a", x, 0.88, z, p)
+	B(0.05, 0.68, 0.5, "#9aa3a8", x - 0.46, 0.53, z, p)
+	B(0.05, 0.68, 0.5, "#9aa3a8", x + 0.46, 0.53, z, p)
+	B(0.4, 0.26, 0.03, "#1a1a1a", x, 1.06, z - 0.18, p)
+	var scr := B(0.36, 0.22, 0.01, "#4ab0ff", x, 1.06, z - 0.163, p)
+	scr.material_override = mat("#4ab0ff", 1.0, true)
+	B(0.3, 0.02, 0.12, "#2b3436", x, 0.92, z + 0.05, p)
+	chair(x, z + 0.55, p, PI)
+
+func extinguisher(x: float, z: float, p: Node3D = null) -> void:
+	C(0.08, 0.08, 0.4, "#d4202a", x, 0.4, z, p, 8)
+	B(0.06, 0.06, 0.06, "#1a1a1a", x, 0.63, z, p)
+
+func locker_row(x: float, z: float, n: int, p: Node3D = null) -> void:
+	for k in range(n):
+		B(0.34, 1.0, 0.4, "#7f8f99" if k % 2 == 0 else "#6f7f89", x + k * 0.36, 0.65, z, p)
+		B(0.04, 0.1, 0.02, "#1a1a1a", x + k * 0.36 + 0.1, 0.75, z + 0.21, p)
+
+func workbench(x: float, z: float, p: Node3D = null) -> void:
+	B(1.4, 0.08, 0.55, "#8a6a4a", x, 0.85, z, p)
+	B(1.4, 0.6, 0.05, "#5a6163", x, 0.5, z - 0.25, p)
+	B(1.4, 0.6, 0.05, "#5a6163", x, 0.5, z + 0.25, p)
+	B(1.4, 0.7, 0.04, "#9aa3a8", x, 1.25, z - 0.26, p)
+	for k in range(5):
+		B(0.04, 0.22, 0.03, ["#c8102e", "#3d6fb0", "#e2b53c", "#1a1a1a", "#3b8f3a"][k], x - 0.5 + k * 0.25, 1.2, z - 0.22, p)
+
+## Sozialtrakt hinter jeder Halle: Meisterbüro, Pausenecke, Spinde, Werkbank, Lager
+func annex(cx: float, note: bool) -> void:
+	var z0 := -14.3
+	var wall := "#3d6fb0" if note else "#c8553a"
+	B(14, 0.14, 2.4, "#d9d4c8", cx, 0.12, z0)
+	B(14, 1.6, 0.25, "#eef0ec", cx, 0.9, z0 - 1.15)
+	B(14.1, 0.18, 0.3, wall, cx, 1.75, z0 - 1.15)
+	for k in range(6):
+		var wnd := B(1.2, 0.55, 0.04, "#2a3a40", cx - 5.5 + k * 2.2, 1.05, z0 - 1.01)
+		wnd.material_override = win_mat
+	# Trennwände (Glas) und Türen
+	for wx in [-3.0, 1.0, 4.4]:
+		B(0.06, 1.0, 2.2, "#bfe3ef", cx + wx, 0.65, z0, null, 0.45)
+	# Meisterbüro links
+	office_desk(cx - 5.4, z0 - 0.55)
+	B(0.9, 1.4, 0.35, "#5a3a22", cx - 3.7, 0.85, z0 - 0.85)
+	for k in range(3):
+		B(0.8, 0.22, 0.28, ["#c8102e", "#3d6fb0", "#e2b53c"][k], cx - 3.7, 0.4 + k * 0.42, z0 - 0.8)
+	C(0.12, 0.09, 0.25, "#a8744f", cx - 6.6, 0.3, z0 + 0.6, null, 8)
+	var lf := sphere(0.2, "#3b8f3a", cx - 6.6, 0.58, z0 + 0.6, self)
+	lf.scale = Vector3(1, 1.3, 1)
+	# Pausenecke
+	C(0.45, 0.45, 0.05, "#e9e4d8", cx - 1.0, 0.85, z0 + 0.1, null, 14)
+	C(0.06, 0.06, 0.7, "#5a6163", cx - 1.0, 0.5, z0 + 0.1, null, 6)
+	chair(cx - 1.65, z0 + 0.1, null, PI / 2)
+	chair(cx - 0.35, z0 + 0.1, null, -PI / 2)
+	chair(cx - 1.0, z0 - 0.55, null, 0.0)
+	B(0.4, 0.75, 0.4, "#2b3436", cx + 0.5, 0.55, z0 - 0.8)
+	B(0.3, 0.06, 0.04, "#c8102e", cx + 0.5, 0.75, z0 - 0.59)
+	# Spinde
+	locker_row(cx + 1.35, z0 - 0.8, 8)
+	# Lager / Werkbank rechts
+	if note:
+		for k in range(4):
+			var roll := C(0.32, 0.32, 0.9, "#f4f1e6", cx + 5.0 + (k % 2) * 0.7, 0.45 + int(k / 2) * 0.64, z0 - 0.5, null, 14)
+			roll.rotation.x = PI / 2
+		for k in range(4):
+			C(0.22, 0.22, 0.6, ["#00a3d9", "#d6006e", "#f2d100", "#2b2b2b"][k], cx + 4.9 + k * 0.5, 0.45, z0 + 0.55, null, 10)
+	else:
+		workbench(cx + 5.6, z0 - 0.6)
+		for k in range(3):
+			C(0.25, 0.25, 0.55, "#9aa3a8", cx + 4.9 + k * 0.6, 0.42, z0 + 0.6, null, 10)
+	extinguisher(cx - 6.8, z0 - 0.85)
+	extinguisher(cx + 6.8, z0 - 0.85)
+
+## Fußwege und Türen von der Hofseite in die Halle
+func hall_paths(cx: float, note: bool) -> void:
+	# Tür in der vorderen Hallenwand
+	B(1.4, 0.06, 0.32, "#9aa3a8", cx, 0.62, 1.0)
+	B(0.1, 0.5, 0.32, "#5a6163", cx - 0.72, 0.36, 1.0)
+	B(0.1, 0.5, 0.32, "#5a6163", cx + 0.72, 0.36, 1.0)
+	# Gehweg zum Hof
+	B(1.6, 0.05, 2.0, "#c9c3b5", cx, 0.12, 2.0)
+	# Fußgängerwege in der Halle (gelbe Linien)
+	var x0 := cx - 6.8
+	B(0.08, 0.02, 13.6, "#ffd21a", x0 + 0.15, 0.2, -6.0)
+	B(0.08, 0.02, 13.6, "#ffd21a", x0 + 0.85, 0.2, -6.0)
+	B(13.4, 0.02, 0.08, "#ffd21a", cx, 0.2, 0.35)
+	B(13.4, 0.02, 0.08, "#ffd21a", cx, 0.2, -12.4)
+	extinguisher(cx + 6.6, 0.6)
+	extinguisher(cx - 6.6, -12.5)
+
+## Fassade für geschlossene Gebäude: Fensterbänder, Tür mit Vordach, Dachaggregate, Gehweg
+func facade(cx: float, cz: float, w: float, d: float, h: float, p: Node3D) -> void:
+	var floors := int(max(1.0, floor(h / 1.2)))
+	for f in range(floors):
+		var y := 0.7 + f * 1.15
+		for k in range(int(w / 0.9)):
+			B(0.55, 0.45, 0.04, "#2c3f4d", cx - w / 2.0 + 0.5 + k * 0.9, y, cz + d / 2.0 + 0.02, p)
+		for k in range(int(d / 0.9)):
+			B(0.04, 0.45, 0.55, "#2c3f4d", cx + w / 2.0 + 0.02, y, cz - d / 2.0 + 0.5 + k * 0.9, p)
+	B(0.9, 0.95, 0.06, "#3a4a5a", cx, 0.58, cz + d / 2.0 + 0.03, p)
+	B(1.4, 0.07, 0.6, "#5a6163", cx, 1.15, cz + d / 2.0 + 0.3, p)
+	B(1.2, 0.05, 1.8, "#c9c3b5", cx, 0.12, cz + d / 2.0 + 0.9, p)
+	for k in range(2):
+		B(0.6, 0.35, 0.5, "#9aa3a8", cx - w / 4.0 + k * w / 2.0, h + 0.38, cz, p)
+		B(0.5, 0.04, 0.4, "#5a6163", cx - w / 4.0 + k * w / 2.0, h + 0.57, cz, p)
+
+const RING_N := -24.0
+const RING_S := 19.5
+const POL_X := 31.0
+const POL_Z := 2.5
+const BLOCKED := [
+	[-20.0, -18.0, 20.0, 18.0],
+	[-25.0, -27.0, 24.0, -21.0], [18.5, -27.0, 24.0, 22.5], [-25.0, 16.5, 24.0, 22.5], [-25.0, -27.0, -19.0, 22.5],
+	[-19.0, 10.5, 84.0, 15.2],
+	[-19.0, -38.5, 19.0, -26.5],
+	[25.0, -4.0, 37.0, 9.5], [23.0, 13.5, 34.0, 19.0],
+	[-36.0, -12.0, -26.5, -3.0], [-33.0, 1.5, -25.5, 8.5],
+	[-60.0, 25.0, 90.0, 28.5],
+	[39.0, -36.0, 52.0, -20.0], [44.0, -14.0, 58.0, -1.0], [42.0, 2.0, 56.0, 11.0], [50.0, 15.0, 64.0, 33.0],
+]
+
+func tree_free(x: float, z: float) -> bool:
+	for r in BLOCKED:
+		if x > r[0] - 1.2 and x < r[2] + 1.2 and z > r[1] - 1.2 and z < r[3] + 1.2:
+			return false
+	return true
+
+## Straße mit Mittelstreifen
+func road(x1: float, z1: float, x2: float, z2: float, p: Node3D = null) -> void:
+	var horiz: bool = abs(x2 - x1) >= abs(z2 - z1)
+	var L: float = max(abs(x2 - x1), abs(z2 - z1))
+	var cx := (x1 + x2) / 2.0
+	var cz := (z1 + z2) / 2.0
+	if horiz:
+		B(L + 3.0, 0.06, 3.0, "#4a5154", cx, 0.1, cz, p)
+		B(L + 3.0, 0.065, 0.12, "#c9cdd0", cx, 0.105, cz - 1.42, p)
+		B(L + 3.0, 0.065, 0.12, "#c9cdd0", cx, 0.105, cz + 1.42, p)
+	else:
+		B(3.0, 0.06, L + 3.0, "#4a5154", cx, 0.1, cz, p)
+		B(0.12, 0.065, L + 3.0, "#c9cdd0", cx - 1.42, 0.105, cz, p)
+		B(0.12, 0.065, L + 3.0, "#c9cdd0", cx + 1.42, 0.105, cz, p)
+	var k := 1.0
+	while k < L - 0.5:
+		if horiz:
+			B(1.2, 0.07, 0.14, "#ffffff", min(x1, x2) + k, 0.12, cz, p)
+		else:
+			B(0.14, 0.07, 1.2, "#ffffff", cx, 0.12, min(z1, z2) + k, p)
+		k += 3.0
+
 func build_static() -> void:
-	B(160, 0.2, 160, "#2a6b26", 0, -0.1, 0)
+	B(320, 0.2, 320, "#2a6b26", 0, -0.1, 0)
 	B(35, 0.1, 31, "#8e9a9e", 0, 0.05, 0)
 	# Münzhalle (warm)
 	B(14, 0.14, 14, "#e2b874", -8, 0.12, -6)
-	B(14, 1.5, 0.3, "#c8553a", -8, 0.85, -13)
+	B(14, 0.5, 0.3, "#c8553a", -8, 0.35, -13)
 	B(0.3, 1.5, 14, "#c8553a", -15, 0.85, -6)
 	B(0.3, 0.5, 14, "#c8553a", -1, 0.35, -6)
 	B(14, 0.5, 0.3, "#c8553a", -8, 0.35, 1)
 	# Druckhalle (blau)
 	B(14, 0.14, 14, "#9fbde6", 8, 0.12, -6)
-	B(14, 1.5, 0.3, "#3d6fb0", 8, 0.85, -13)
+	B(14, 0.5, 0.3, "#3d6fb0", 8, 0.35, -13)
 	B(0.3, 0.5, 14, "#3d6fb0", 1, 0.35, -6)
 	B(0.3, 0.5, 14, "#3d6fb0", 15, 0.35, -6)
 	B(14, 0.5, 0.3, "#3d6fb0", 8, 0.35, 1)
@@ -331,17 +492,32 @@ func build_static() -> void:
 	# Hof, Rampe, Straße
 	B(19, 0.08, 9, "#4d5559", 6, 0.12, 7.5)
 	B(1.2, 0.6, 3.2, "#a9b0b0", -3.6, 0.4, 9.4)
-	B(80, 0.06, 3, "#4a5154", 30, 0.1, 12.8)
-	for i in range(14):
-		B(1.4, 0.07, 0.15, "#ffffff", 2 + i * 4, 0.12, 12.8)
+	# Hauptstraße vom Werkstor nach Osten, Hofzufahrt
+	road(-10.0, 12.8, 80.0, 12.8)
 	B(3, 0.06, 9, "#4a5154", 14.5, 0.1, 8.5)
-	# Bäume
-	var trees := [[-22, -18], [-24, -6], [-21, 6], [-23, 17], [-10, -31], [2, -32], [14, -31], [24, -14], [23, -2], [26, 4], [-6, 21], [6, 20], [22, 20], [-16, 20], [30, 22], [-28, 0], [-30, 12], [34, -8]]
-	for i in range(trees.size()):
-		var x: float = trees[i][0]
-		var z: float = trees[i][1]
-		C(0.15, 0.2, 0.8, "#7a5532", x, 0.4, z, null, 6)
-		C(0.0, 1.1 + (i % 3) * 0.2, 2.4, "#2e7d32" if i % 2 else "#3b8f3a", x, 1.9, z, null, 7)
+	# Ringstraße ums Werk
+	road(-22.0, RING_N, 21.0, RING_N)
+	road(21.0, RING_N, 21.0, RING_S)
+	road(-22.0, RING_S, 21.0, RING_S)
+	road(-22.0, RING_N, -22.0, RING_S)
+	# Zufahrten: Polizei, Museum, Hubschrauberplatz
+	road(21.0, 3.0, POL_X - 4.75, 3.0)
+	road(-22.0, -8.0, -27.5, -8.0)
+	road(-22.0, 5.0, -27.0, 5.0)
+	# Bäume um Straßen und Gebäude herum verteilt
+	var n := 0
+	var xg := -46.0
+	while xg <= 46.0:
+		var zg := -46.0
+		while zg <= 36.0:
+			var jx := xg + sin(xg * 1.7 + zg * 0.9) * 1.8
+			var jz := zg + cos(xg * 0.8 - zg * 1.3) * 1.8
+			if tree_free(jx, jz):
+				C(0.15, 0.2, 0.8, "#7a5532", jx, 0.4, jz, null, 6)
+				C(0.0, 1.0 + (n % 3) * 0.25, 2.3 + (n % 2) * 0.4, "#2e7d32" if n % 2 else "#3b8f3a", jx, 1.9, jz, null, 7)
+				n += 1
+			zg += 5.5
+		xg += 5.5
 	lamp_mat = StandardMaterial3D.new()
 	lamp_mat.albedo_color = Color("#fff2c0")
 	lamp_mat.emission_enabled = true
@@ -355,18 +531,17 @@ func build_static() -> void:
 		var hd := B(0.5, 0.18, 0.5, "#3a4448", lp[0], 3.25, lp[1])
 		var bulb := B(0.36, 0.12, 0.36, "#fff2c0", lp[0], 3.12, lp[1])
 		bulb.material_override = lamp_mat
-	for wx in [-12.0, -8.0, -4.0]:
-		var w1 := B(1.6, 0.5, 0.05, "#2a3a40", wx, 1.0, -12.82)
-		w1.material_override = win_mat
-	for wx in [4.0, 8.0, 12.0]:
-		var w2 := B(1.6, 0.5, 0.05, "#2a3a40", wx, 1.0, -12.82)
-		w2.material_override = win_mat
+	annex(-8.0, false)
+	annex(8.0, true)
+	hall_paths(-8.0, false)
+	hall_paths(8.0, true)
 	label3d("Münzhalle", -8, 3.4, -14)
 	label3d("Druckhalle", 8, 3.4, -14)
 	label3d("Tresor", -10, 4.4, 4.0)
 	label3d("Fuhrpark", 6, 2.4, 7.5)
 	for i in range(3):
 		var r := person("#222831", self, false, "robber")
+		merge_deep(r)
 		r.visible = false
 		robbers.append(r)
 	beacon = MeshInstance3D.new()
@@ -555,6 +730,35 @@ func build() -> void:
 		merge_deep(g.p)
 	for tr in anim.trucks:
 		merge_deep(tr.t)
+	# alle übrigen unbeweglichen Gruppen (Figuren, Autos, Hubschrauber am Boden …) zusammenfassen
+	var keep := {}
+	if anim.has("carts"):
+		for c in anim.carts:
+			keep[c.n] = true
+	if anim.has("vdoor"):
+		keep[anim.vdoor] = true
+	for d in anim.drones:
+		keep[d.d] = true
+	for k2 in ["train", "plane", "patrol", "fork"]:
+		if anim.get(k2) != null:
+			keep[anim[k2]] = true
+	if anim.rotor != null:
+		keep[anim.rotor.get_parent()] = true
+	for w in anim.work:
+		keep[w.p] = true
+	for g in anim.guards:
+		keep[g.p] = true
+	for tr in anim.trucks:
+		keep[tr.t] = true
+	for b in anim.belts:
+		keep[b.g] = true
+	for pp in anim.pist:
+		keep[pp.m] = true
+	for cm in anim.cams:
+		keep[cm] = true
+	for ch in dyn.get_children():
+		if ch is Node3D and not (ch is MeshInstance3D) and not (ch is Label3D) and not keep.has(ch):
+			merge_deep(ch)
 	if OS.has_environment("BB_PERF"):
 		print("MERGE_MS %.1f children=%d" % [(Time.get_ticks_usec() - tb) / 1000.0, nodes_before])
 	build_piles()
@@ -813,6 +1017,7 @@ func build_extras() -> void:
 		B(3.4, 1.4 + sl * 0.08, 2.2, "#8a5a9e", 3.2, 0.85, 3.9, dyn)
 		B(3.6, 0.2, 2.4, "#5e3a70", 3.2, 1.6 + sl * 0.08, 3.9, dyn)
 		B(1.0, 0.8, 0.6, "#2b3436", 3.2, 0.6, 5.2, dyn)
+		facade(3.2, 3.9, 3.4, 2.2, 1.4 + sl * 0.08, dyn)
 		var sp_l := Label3D.new()
 		sp_l.text = "Schredder %d" % sl
 		sp_l.font_size = 64
@@ -828,11 +1033,11 @@ func build_extras() -> void:
 			sch.scale = Vector3(1, 0.6, 1)
 	# Museum (außerhalb des Zauns, links)
 	if int(S["museum"]) > 0:
-		B(6, 0.4, 4, "#e9e2d0", -24, 0.2, -6, dyn)
+		B(6, 0.4, 4, "#e9e2d0", -31, 0.2, -8, dyn)
 		for k in range(5):
-			C(0.25, 0.25, 2.2, "#f4efe2", -26.4 + k * 1.2, 1.5, -4.3, dyn, 10)
-		B(6.2, 0.5, 4.2, "#e9e2d0", -24, 2.85, -6, dyn)
-		var roof := C(0.0, 3.3, 1.2, "#c9b27a", -24, 3.7, -6, dyn, 4)
+			C(0.25, 0.25, 2.2, "#f4efe2", -28.6, 1.5, -10.4 + k * 1.2, dyn, 10)
+		B(6.2, 0.5, 4.2, "#e9e2d0", -31, 2.85, -8, dyn)
+		var roof := C(0.0, 3.3, 1.2, "#c9b27a", -31, 3.7, -8, dyn, 4)
 		roof.rotation.y = PI / 4
 		var ml := Label3D.new()
 		ml.text = "Museum · %d" % (int(S["rep"]) + S["coins"].size())
@@ -842,17 +1047,24 @@ func build_extras() -> void:
 		ml.outline_modulate = Color("#0a4f4a")
 		ml.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 		ml.no_depth_test = true
-		ml.position = Vector3(-24, 5.2, -6)
+		ml.position = Vector3(-31, 5.2, -8)
 		dyn.add_child(ml)
 	# Zweigwerke (in der Ferne)
-	var spots := {"mainz": [34, -22, "#c8553a"], "leipzig": [40, -6, "#0e8a7c"], "muenchen": [36, 10, "#3d6fb0"], "hamburg": [44, 24, "#8a5a9e"]}
+	var spots := {"mainz": [45, -28, "#c8553a"], "leipzig": [51, -7.5, "#0e8a7c"], "muenchen": [49, 6.5, "#3d6fb0"], "hamburg": [57, 24, "#8a5a9e"]}
 	var names := {"mainz": "Mainz", "leipzig": "Leipzig", "muenchen": "München", "hamburg": "Hamburg"}
 	for id in spots.keys():
 		if S["sites"].get(id, false):
 			var sp2: Array = spots[id]
 			B(6, 0.12, 5, "#8e9a9e", sp2[0], 0.08, sp2[1], dyn)
+			road(sp2[0], sp2[1] + (2.5 if sp2[1] < 12.8 else -2.5), sp2[0], 12.8, dyn)
 			B(4.5, 2.0, 3.2, sp2[2], sp2[0], 1.1, sp2[1], dyn)
 			B(4.7, 0.25, 3.4, "#2b3436", sp2[0], 2.2, sp2[1], dyn)
+			facade(sp2[0], sp2[1], 4.5, 3.2, 2.0, dyn)
+			for k in range(4):
+				var cc := vehicle("v1")
+				cc.rotation.y = PI / 2
+				cc.position = Vector3(sp2[0] - 2.4 + k * 1.2, 0.05, sp2[1] - 2.0)
+				dyn.add_child(cc)
 			C(0.3, 0.4, 3.0, "#9aa3a8", sp2[0] + 1.6, 2.8, sp2[1] - 0.8, dyn, 8)
 			var sl3 := Label3D.new()
 			sl3.text = names[id]
@@ -977,7 +1189,7 @@ func plant(x: float, z: float, p: Node3D) -> void:
 
 func build_admin() -> void:
 	var S: Dictionary = main.S
-	var z0 := -24.0
+	var z0 := -32.5
 	var depth := 7.0
 	var w := 3.5
 	var x0 := -15.75
@@ -989,6 +1201,15 @@ func build_admin() -> void:
 		B(0.9, 0.7, 0.04, "#2c3f4d", x0 + 0.9 + k * 1.75, 1.55, z0 - depth / 2.0 + 0.17, dyn)
 	B(0.3, 1.2, depth, "#e9e4d8", x0 - 0.15, 0.7, z0, dyn)
 	B(0.3, 1.2, depth, "#e9e4d8", x0 + 9 * w + 0.15, 0.7, z0, dyn)
+	for k in range(8):
+		B(0.08, 0.02, 1.6, "#ffffff", -14.0 + k * 4.0, 0.12, z0 + depth / 2.0 + 1.6, dyn)
+	var civ := ["#c8102e", "#e8ecee", "#2a2f3a", "#3d6fb0", "#e2b53c", "#6fae8f"]
+	for k in range(6):
+		var car := police_car(civ[k], civ[k], false, false)
+		car.rotation.y = PI / 2
+		car.position = Vector3(-12.0 + k * 4.4, 0.0, z0 + depth / 2.0 + 1.6)
+		dyn.add_child(car)
+		merge_deep(car)
 	var vl := Label3D.new()
 	vl.text = "Verwaltung"
 	vl.font_size = 120
@@ -1138,7 +1359,7 @@ func police_light() -> StandardMaterial3D:
 	return police_mat
 
 ## Realistischer Streifenwagen: Karosserie, Kabine mit Scheiben, Motorhaube, Lichter, Lichtbalken
-func police_car(body_col := "#e8ecee", band_col := "#1f4fbf", van := false) -> Node3D:
+func police_car(body_col := "#e8ecee", band_col := "#1f4fbf", van := false, lights := true) -> Node3D:
 	var c := Node3D.new()
 	var L := 2.4 if van else 2.0
 	var cabin_h := 0.55 if van else 0.38
@@ -1147,7 +1368,8 @@ func police_car(body_col := "#e8ecee", band_col := "#1f4fbf", van := false) -> N
 	B(L, 0.36, 0.9, body_col, 0, 0.42, 0, c)
 	# Zierstreifen (Polizei-Design)
 	B(L + 0.01, 0.12, 0.91, band_col, 0, 0.45, 0, c)
-	B(L * 0.5, 0.04, 0.912, "#ffd21a" if not van else band_col, -0.1, 0.53, 0, c)
+	if lights:
+		B(L * 0.5, 0.04, 0.912, "#ffd21a" if not van else band_col, -0.1, 0.53, 0, c)
 	# Kabine mit Scheiben
 	var cab_l := L * (0.7 if van else 0.5)
 	var cab_x := -0.15 if van else -0.08
@@ -1156,8 +1378,9 @@ func police_car(body_col := "#e8ecee", band_col := "#1f4fbf", van := false) -> N
 	B(0.05, cabin_h * 0.6, 0.78, "#2c3f4d", cab_x + cab_l / 2.0 + 0.01, 0.62 + cabin_h * 0.45, 0, c)
 	# Dach und Lichtbalken
 	B(cab_l, 0.04, 0.84, body_col, cab_x, 0.6 + cabin_h + 0.02, 0, c)
-	var bar := B(0.24, 0.08, 0.7, "#2f6bff", cab_x, 0.66 + cabin_h, 0, c)
-	bar.material_override = police_light()
+	if lights:
+		var bar := B(0.24, 0.08, 0.7, "#2f6bff", cab_x, 0.66 + cabin_h, 0, c)
+		bar.material_override = police_light()
 	# Front/Heck: Scheinwerfer, Rücklichter, Stoßstangen
 	var hl := L / 2.0
 	for zz in [-0.3, 0.3]:
@@ -1193,13 +1416,13 @@ func police_label(txt: String, pos: Vector3, size := 72) -> void:
 
 func build_police(pt: int) -> void:
 	# Grundstück neben dem Werk (rechts, nördlich der Straße)
-	var gx := 23.5
-	var gz := 6.5
+	var gx := POL_X
+	var gz := POL_Z
 	B(9.5, 0.08, 9.0, "#8e9a9e", gx, 0.09, gz, dyn)
-	B(9.5, 0.06, 2.2, "#4a5154", gx, 0.12, 10.2, dyn)
+	B(9.5, 0.06, 2.2, "#4a5154", gx, 0.12, gz + 3.7, dyn)
 	# Parkplatzmarkierungen
 	for k in range(6):
-		B(0.08, 0.02, 1.6, "#ffffff", 19.6 + k * 1.6, 0.16, 9.8, dyn)
+		B(0.08, 0.02, 1.6, "#ffffff", gx - 3.9 + k * 1.6, 0.16, gz + 3.3, dyn)
 	# Hauptgebäude: wächst mit der Stufe
 	var floors := 1 if pt == 1 else (2 if pt <= 3 else 3)
 	var bw := 4.2 if pt == 1 else 6.0
@@ -1258,7 +1481,7 @@ func build_police(pt: int) -> void:
 	for k in range(ncar):
 		var car := police_car()
 		car.rotation.y = PI / 2
-		car.position = Vector3(19.6 + 0.8 + k * 1.6 if k < 6 else 26.0, 0.0, 9.8 if k < 6 else 12.0)
+		car.position = Vector3(gx - 3.1 + k * 1.6 if k < 6 else gx - 5.5, 0.0, gz + 3.3 if k < 6 else gz - 2.0)
 		dyn.add_child(car)
 		merge_deep(car)
 	# Ein Streifenwagen fährt Streife
@@ -1273,7 +1496,7 @@ func build_police(pt: int) -> void:
 		cop.position = Vector3(bx - 1.6 + k * 0.55, 0.12, bz + bd / 2.0 + 1.3 + (k % 2) * 0.4)
 		cop.rotation.y = randf() * 0.6 - 0.3
 
-const PATROL := [[19.0, 12.3], [44.0, 12.3], [44.0, 13.4], [19.0, 13.4], [19.0, 12.3]]
+const PATROL := [[21.6, 3.0], [21.6, -24.6], [-22.6, -24.6], [-22.6, 20.1], [21.6, 20.1], [21.6, 3.0]]
 
 func build_security() -> void:
 	var g3 := cnt("g", "g3")
@@ -1317,16 +1540,19 @@ func build_security() -> void:
 		build_police(pt)
 	if cnt("g", "g7") > 0:
 		var sek := police_car("#1d2326", "#1d2326", true)
-		sek.position = Vector3(27.5, 0.0, 16.4)
+		sek.position = Vector3(31.5, 0.0, 16.2)
 		dyn.add_child(sek)
 		merge_deep(sek)
 		for j in range(3):
-			person("#1d2326", dyn, false, "guard").position = Vector3(25.5 + j * 0.7, 0.1, 17.4)
+			person("#1d2326", dyn, false, "guard").position = Vector3(29.6 + j * 0.7, 0.1, 17.4)
 	if cnt("g", "g8") > 0:
-		B(3, 1.4, 1.3, "#4b5a32", 21.5, 0.85, 16.4, dyn)
-		B(1.2, 1, 1.3, "#4b5a32", 23.5, 0.65, 16.4, dyn)
+		B(9.0, 0.06, 4.5, "#5d666a", 29.0, 0.09, 16.2, dyn)
+		var bw := vehicle("v4", true)
+		bw.position = Vector3(26.5, 0.0, 16.2)
+		dyn.add_child(bw)
+		merge_deep(bw)
 		for j in range(min(cnt("g", "g8"), 4)):
-			person("#4b5a32", dyn, false, "soldier").position = Vector3(19.5 + j * 0.8, 0.1, 15.0)
+			person("#4b5a32", dyn, false, "soldier").position = Vector3(24.5 + j * 0.8, 0.1, 17.6)
 	for j in range(min(cnt("g", "g9"), 4)):
 		var d := Node3D.new()
 		B(0.6, 0.15, 0.6, "#2b3436", 0, 0, 0, d)
@@ -1337,6 +1563,119 @@ func build_security() -> void:
 	if cnt("g", "g10") > 0:
 		var dish := C(1, 0.2, 0.4, "#e8ecee", -7, 2.6, 5, dyn, 14)
 		dish.rotation.x = -0.6
+
+# ---------------------------------------------------------------- Fahrzeuge (Vorderseite = +x)
+func wheel(x: float, z: float, r: float, p: Node3D, dual := false) -> void:
+	var w := 0.22 if dual else 0.14
+	var t := C(r, r, w, "#121212", x, r, z, p, 14)
+	t.rotation.x = PI / 2
+	var rim := C(r * 0.55, r * 0.55, w + 0.01, "#b8c0c4", x, r, z, p, 10)
+	rim.rotation.x = PI / 2
+	var hub := C(r * 0.18, r * 0.18, w + 0.02, "#3a4448", x, r, z, p, 6)
+	hub.rotation.x = PI / 2
+
+func lights(xf: float, xr: float, y: float, zs: float, p: Node3D) -> void:
+	for zz in [-zs, zs]:
+		var h := B(0.03, 0.09, 0.16, "#fffbe0", xf + 0.015, y, zz, p)
+		h.material_override = mat("#fffbe0", 1.0, true)
+		var r := B(0.03, 0.12, 0.1, "#ff2030", xr - 0.015, y, zz, p)
+		r.material_override = mat("#ff2030", 1.0, true)
+
+func windshield(x: float, y: float, h: float, w: float, p: Node3D, lean := 0.25) -> void:
+	var g := B(0.05, h, w, "#22323d", x, y, 0, p)
+	g.rotation.z = lean
+
+## Realistische Fahrzeuge: Lieferwagen, Geldtransporter, Panzerwagen, LKW mit Kofferaufbau
+func vehicle(k: String, army := false) -> Node3D:
+	var v := Node3D.new()
+	var body := "#56653a" if army else "#f4f6f7"
+	var cab := "#4b5a32" if army else "#e8ecee"
+	var band := "#3f4a2a" if army else "#0e8a7c"
+	var band2 := "#3f4a2a" if army else "#ffc23d"
+	match k:
+		"v1":
+			# kleiner weißer Kastenwagen
+			B(1.75, 0.08, 0.86, "#1b1f22", 0, 0.2, 0, v)
+			B(1.75, 0.42, 0.88, "#f2f4f5", 0, 0.45, 0, v)
+			B(1.3, 0.5, 0.86, "#f2f4f5", -0.2, 0.9, 0, v)
+			B(0.42, 0.18, 0.86, "#f2f4f5", 0.66, 0.72, 0, v)
+			windshield(0.5, 0.92, 0.42, 0.8, v, 0.45)
+			B(0.36, 0.26, 0.885, "#22323d", 0.22, 0.92, 0, v)
+			B(1.0, 0.1, 0.89, "#0e8a7c", -0.35, 0.62, 0, v)
+			B(0.05, 0.12, 0.6, "#2b3033", 0.88, 0.32, 0, v)
+			lights(0.875, -0.875, 0.5, 0.32, v)
+			for ww in [[0.55, 0.44], [-0.55, 0.44], [0.55, -0.44], [-0.55, -0.44]]:
+				wheel(ww[0], ww[1], 0.2, v)
+			B(0.06, 0.08, 0.06, "#1b1f22", 0.42, 0.95, 0.47, v)
+			B(0.06, 0.08, 0.06, "#1b1f22", 0.42, 0.95, -0.47, v)
+		"v2":
+			# gepanzerter Geldtransporter (Sprinter-Bauform)
+			B(2.3, 0.1, 0.94, "#1b1f22", 0, 0.22, 0, v)
+			B(0.45, 0.42, 0.92, "#5d676c", 0.92, 0.47, 0, v)
+			B(0.5, 0.85, 0.92, "#5d676c", 0.5, 0.7, 0, v)
+			windshield(0.78, 0.93, 0.36, 0.84, v, 0.35)
+			B(0.3, 0.2, 0.94, "#22323d", 0.52, 0.95, 0, v)
+			B(1.55, 1.12, 0.96, "#c3cbcf", -0.4, 0.83, 0, v)
+			B(1.56, 0.14, 0.97, "#ffc23d", -0.4, 0.62, 0, v)
+			B(0.02, 0.9, 0.02, "#7a8489", -1.18, 0.83, 0, v)
+			B(0.06, 0.14, 0.7, "#2b3033", 1.16, 0.34, 0, v)
+			B(0.3, 0.1, 0.3, "#c3cbcf", -0.4, 1.44, 0, v)
+			lights(1.15, -1.18, 0.5, 0.34, v)
+			for ww in [[0.78, 0.48], [-0.78, 0.48], [0.78, -0.48], [-0.78, -0.48]]:
+				wheel(ww[0], ww[1], 0.22, v)
+			B(0.06, 0.1, 0.06, "#1b1f22", 0.72, 1.0, 0.52, v)
+			B(0.06, 0.1, 0.06, "#1b1f22", 0.72, 1.0, -0.52, v)
+		"v3":
+			# Panzerwagen: schwerer, kantiger Werttransporter mit Sehschlitzen
+			B(2.7, 0.14, 1.04, "#1b1f22", 0, 0.28, 0, v)
+			B(0.55, 0.55, 1.02, "#3f4d52", 1.06, 0.62, 0, v)
+			B(0.6, 1.05, 1.04, "#3f4d52", 0.55, 0.9, 0, v)
+			B(0.05, 0.14, 0.86, "#22323d", 0.86, 1.18, 0, v)
+			B(1.75, 1.3, 1.06, "#4a5a60", -0.6, 1.0, 0, v)
+			B(1.76, 0.1, 1.07, "#2f6bff", -0.6, 0.72, 0, v)
+			for zz in [-0.54, 0.54]:
+				B(0.3, 0.06, 0.01, "#22323d", -0.3, 1.25, zz, v)
+				B(0.3, 0.06, 0.01, "#22323d", -1.0, 1.25, zz, v)
+			B(0.5, 0.12, 0.5, "#3f4d52", -0.6, 1.72, 0, v)
+			B(0.1, 0.2, 1.06, "#2b3033", 1.36, 0.42, 0, v)
+			var bl := B(0.3, 0.1, 0.6, "#2f6bff", 0.55, 1.47, 0, v)
+			bl.material_override = mat("#3a6fd8", 1.0, true)
+			lights(1.33, -1.48, 0.62, 0.38, v)
+			for ww in [[0.95, 0.53], [-0.3, 0.53], [-1.0, 0.53], [0.95, -0.53], [-0.3, -0.53], [-1.0, -0.53]]:
+				wheel(ww[0], ww[1], 0.26, v)
+		_:
+			# Werttransport-LKW: Frontlenker-Fahrerhaus, Kofferaufbau, Doppelreifen
+			B(3.8, 0.14, 0.7, "#1b1f22", -0.1, 0.36, 0, v)
+			# Fahrerhaus
+			B(0.85, 1.25, 1.1, cab, 1.45, 1.05, 0, v)
+			B(0.04, 0.6, 1.0, "#22323d", 1.88, 1.28, 0, v)
+			B(0.05, 0.12, 1.1, "#c9d2d5", 1.9, 1.66, 0, v)
+			B(0.04, 0.35, 0.9, "#2b3033", 1.885, 0.75, 0, v)
+			for gg in range(4):
+				B(0.045, 0.03, 0.86, "#7a8489", 1.9, 0.64 + gg * 0.08, 0, v)
+			B(0.86, 0.2, 1.11, band, 1.45, 0.52, 0, v)
+			B(0.86, 0.06, 1.11, band2, 1.45, 0.64, 0, v)
+			B(0.3, 0.35, 0.02, "#22323d", 1.6, 1.3, 0.56, v)
+			B(0.3, 0.35, 0.02, "#22323d", 1.6, 1.3, -0.56, v)
+			B(0.06, 0.3, 0.05, "#1b1f22", 1.92, 1.35, 0.66, v)
+			B(0.06, 0.3, 0.05, "#1b1f22", 1.92, 1.35, -0.66, v)
+			B(0.8, 0.12, 1.12, "#c9d2d5", 1.45, 1.72, 0, v)
+			# Tank, Kotflügel
+			C(0.16, 0.16, 0.6, "#c9d2d5", 1.0, 0.5, 0.5, v, 10).rotation.z = PI / 2
+			# Kofferaufbau
+			B(2.7, 1.45, 1.12, body, -0.55, 1.2, 0, v)
+			B(2.71, 0.16, 1.13, band, -0.55, 0.62, 0, v)
+			B(2.71, 0.08, 1.13, band2, -0.55, 0.74, 0, v)
+			B(0.02, 1.35, 0.02, "#9aa3a8", -1.91, 1.2, 0, v)
+			B(0.02, 1.35, 0.02, "#9aa3a8", -1.91, 1.2, 0.3, v)
+			B(0.02, 1.35, 0.02, "#9aa3a8", -1.91, 1.2, -0.3, v)
+			lights(1.9, -1.92, 0.62, 0.42, v)
+			wheel(1.35, 0.5, 0.3, v)
+			wheel(1.35, -0.5, 0.3, v)
+			for wx in [-1.05, -1.7]:
+				wheel(wx, 0.48, 0.3, v, true)
+				wheel(wx, -0.48, 0.3, v, true)
+	return v
 
 func build_fleet() -> void:
 	var own := []
@@ -1354,42 +1693,19 @@ func build_fleet() -> void:
 	fleet = fleet.slice(0, 12)
 	for j in range(fleet.size()):
 		var k: String = fleet[j]
-		var tr := Node3D.new()
-		var wheels := []
-		if k == "v1":
-			B(1.5, 0.9, 0.9, "#f2f2f2", -0.1, 0.65, 0, tr)
-			B(0.5, 0.6, 0.85, "#bfe3ef", 0.6, 0.7, 0, tr)
-			wheels = [[-0.6, 0.45], [0.5, 0.45], [-0.6, -0.45], [0.5, -0.45]]
-		elif k == "v2":
-			B(1.9, 1.1, 1, "#3d4b4f", -0.3, 0.75, 0, tr)
-			B(0.8, 0.8, 0.95, "#e6e9ea", 0.95, 0.6, 0, tr)
-			B(1.9, 0.12, 1.02, "#ffc23d", -0.3, 0.6, 0, tr)
-			wheels = [[-0.9, 0.5], [0.9, 0.5], [-0.9, -0.5], [0.9, -0.5]]
-		elif k == "v3":
-			B(2.2, 1.2, 1.1, "#55666b", -0.3, 0.8, 0, tr)
-			B(0.8, 0.9, 1.05, "#3d4b4f", 1.1, 0.65, 0, tr)
-			var bl := B(0.25, 0.12, 0.25, "#3a6fd8", 1.1, 1.15, 0, tr)
-			bl.material_override = mat("#3a6fd8", 1.0, true)
-			wheels = [[-1, 0.55], [1, 0.55], [-1, -0.55], [1, -0.55]]
-		else:
-			B(3, 1.4, 1.1, "#0e8a7c", -0.6, 0.95, 0, tr)
-			B(0.9, 1, 1.05, "#e6e9ea", 1.3, 0.7, 0, tr)
-			B(3, 0.14, 1.12, "#ffc23d", -0.6, 0.8, 0, tr)
-			wheels = [[-1.6, 0.55], [-0.8, 0.55], [1.2, 0.55], [-1.6, -0.55], [-0.8, -0.55], [1.2, -0.55]]
-		for w in wheels:
-			var wm := C(0.22, 0.22, 0.15, "#1b2224", w[0], 0.22, w[1], tr, 8)
-			wm.rotation.x = PI / 2
+		var tr := vehicle(k)
 		if int(main.S["escort"]) > 0 and j % max(1, 4 - int(main.S["escort"]) / 2) == 0:
 			var esc := B(0.3, 0.14, 0.3, "#3a6fd8", 0.2, 1.42, 0, tr)
 			esc.material_override = mat("#3a6fd8", 1.0, true)
 		dyn.add_child(tr)
 		anim.trucks.append({t = tr, u = float(j) / fleet.size()})
 	if cnt("v", "v5") > 0:
-		B(80, 0.08, 0.5, "#7a6a5a", 20, 0.1, 19.5, dyn)
+		B(150, 0.08, 0.5, "#7a6a5a", 15, 0.1, 26.5, dyn)
+		B(150, 0.05, 1.6, "#9a8f80", 15, 0.06, 26.5, dyn)
 		var train := Node3D.new()
 		for j in range(4):
 			B(2.6, 1.2, 1, "#c8102e" if j > 0 else "#2f3739", j * -2.8, 0.8, 0, train)
-		train.position.z = 19.5
+		train.position.z = 26.5
 		dyn.add_child(train)
 		anim.train = train
 	if cnt("v", "v6") > 0:
@@ -1400,16 +1716,19 @@ func build_fleet() -> void:
 		dyn.add_child(pl)
 		anim.plane = pl
 	if cnt("v", "v7") > 0:
-		B(3.2, 0.1, 3.2, "#5a6163", -22, 0.12, 4, dyn)
-		B(1.6, 0.11, 0.25, "#ffffff", -22, 0.14, 4, dyn)
+		B(3.2, 0.1, 3.2, "#5a6163", -29, 0.12, 5, dyn)
+		B(1.6, 0.11, 0.25, "#ffffff", -29, 0.14, 5, dyn)
 		var h := Node3D.new()
 		B(1.4, 0.6, 0.7, "#c8102e", 0, 0, 0, h)
 		anim.rotor = B(2.6, 0.04, 0.15, "#2b3436", 0, 0.4, 0, h)
-		h.position = Vector3(-22, 0.55, 4)
+		h.position = Vector3(-29, 0.55, 5)
 		dyn.add_child(h)
 	if cnt("v", "v8") > 0:
 		B(4, 2.4, 3.2, "#3f6f7d", 11, 1.3, 5.2, dyn)
 		B(4.2, 0.2, 3.4, "#0e8a7c", 11, 2.6, 5.2, dyn)
+		facade(11.0, 5.2, 4.0, 3.2, 2.4, dyn)
+		for k in range(3):
+			B(0.9, 1.1, 0.05, "#9aa3a8", 9.9 + k * 1.1, 0.7, 6.83, dyn)
 
 var pile_slots := []
 
@@ -1612,8 +1931,8 @@ func pan(rel: Vector2) -> void:
 	var k := 0.7071
 	tx += -rel.x * u * k - rel.y * u * 1.73 * k
 	tz += rel.x * u * k - rel.y * u * 1.73 * k
-	tx = clamp(tx, -22.0, 26.0)
-	tz = clamp(tz, -18.0, 20.0)
+	tx = clamp(tx, -40.0, 60.0)
+	tz = clamp(tz, -40.0, 34.0)
 	fit()
 
 func tap(pos: Vector2) -> void:

@@ -958,7 +958,7 @@ func _ready() -> void:
 	http.request_completed.connect(_on_update_response)
 	check_update(false)
 	if OS.has_environment("BB_TEST"):
-		call_deferred(OS.get_environment("BB_TEST"))
+		get_tree().create_timer(3.0).timeout.connect(Callable(self, OS.get_environment("BB_TEST")))
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_PAUSED or what == NOTIFICATION_WM_CLOSE_REQUEST or what == NOTIFICATION_APPLICATION_FOCUS_OUT:
@@ -1012,6 +1012,21 @@ func fling_tick(dt: float) -> void:
 	fling *= pow(0.04, dt)
 	if scroll_pos <= 0.0 or scroll_pos >= max_scroll():
 		fling = 0.0
+
+func test_count() -> void:
+	var counts := {}
+	for n in world.find_children("*", "MeshInstance3D", true, false):
+		var par: Node = n.get_parent()
+		var key: String = par.name if par != world else "world"
+		if par.get_parent() == world.dyn or par == world.dyn:
+			key = "dyn/" + (par.name if par != world.dyn else "")
+		counts[key] = counts.get(key, 0) + 1
+	var arr := []
+	for k in counts.keys():
+		arr.append([counts[k], k])
+	arr.sort()
+	arr.reverse()
+	print("COUNT ", arr.slice(0, 12))
 
 func test_pers() -> void:
 	zsub = "pers"
