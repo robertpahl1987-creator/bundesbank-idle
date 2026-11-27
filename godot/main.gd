@@ -224,31 +224,17 @@ var dl: HTTPRequest
 const UPD_FILE := "user://update.apk"
 
 ## Lädt die neue APK in den App-Speicher und öffnet direkt die Android-Installation
-func start_download() -> void:
-	if OS.get_name() != "Android":
-		OS.shell_open(APK_URL)
-		get_node("UpdRoot").visible = false
-		return
-	save_game()
-	if dl == null:
-		dl = HTTPRequest.new()
-		dl.use_threads = true
-		dl.max_redirects = 10
-		dl.download_chunk_size = 262144
-		add_child(dl)
-		dl.request_completed.connect(_on_download_done)
-	if dl.get_http_client_status() != HTTPClient.STATUS_DISCONNECTED:
-		return
+func cleanup_old_apk() -> void:
 	if FileAccess.file_exists(UPD_FILE):
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(UPD_FILE))
-	dl.download_file = UPD_FILE
-	upd_bar.visible = true
-	upd_bar.value = 0
-	upd_btn.disabled = true
-	upd_btn.text = "Lädt …"
-	var err := dl.request(APK_URL, ["User-Agent: BundesbankIdle"])
-	if err != OK:
-		download_failed()
+
+func start_download() -> void:
+	# Kein Installieren aus der App heraus mehr (Play Protect stuft das als verdächtig ein):
+	# die neue Version wird im Browser geladen und von Android installiert.
+	save_game()
+	OS.shell_open(APK_URL)
+	l_update.text = "Der Download läuft im Browser. Öffne danach die Datei „BundesbankIdle.apk“ und tippe auf „Aktualisieren“. Dein Spielstand bleibt erhalten."
+	upd_btn.text = "Nochmal laden"
 
 func download_tick() -> void:
 	if dl == null or not upd_bar.visible or dl.get_http_client_status() == HTTPClient.STATUS_DISCONNECTED:
@@ -1068,6 +1054,7 @@ func num(n: float) -> String:
 # ---------------------------------------------------------------- Start
 func _ready() -> void:
 	randomize()
+	cleanup_old_apk()
 	var base := ThemeDB.fallback_font
 	bold_font = FontVariation.new()
 	bold_font.base_font = base
@@ -1557,7 +1544,7 @@ func build_ui() -> void:
 	upd_bar.visible = false
 	uv.add_child(upd_bar)
 	var later := btn("Später", func(): get_node("UpdRoot").visible = false, "light", 200)
-	upd_btn = btn("Jetzt installieren", func(): start_download(), "main", 300)
+	upd_btn = btn("Herunterladen", func(): start_download(), "main", 300)
 	uh.add_child(later)
 	uh.add_child(upd_btn)
 	upd_browser = btn("Im Browser laden", func(): OS.shell_open(APK_URL), "light", 0)
@@ -2298,15 +2285,11 @@ func _on_update_response(result: int, code: int, _headers: PackedStringArray, bo
 	var latest := version_num(tag)
 	var mine := version_num(str(ProjectSettings.get_setting("application/config/version", "0")))
 	if latest > mine:
-		l_update.text = "Version %s ist da. Tippe auf „Jetzt installieren“ – das Update wird direkt in der App geladen und installiert. Dein Spielstand bleibt erhalten." % tag
-		upd_btn.text = "Jetzt installieren"
+		l_update.text = "Version %s ist da. Tippe auf „Herunterladen“ – die neue Version wird im Browser geladen. Danach die Datei öffnen und „Aktualisieren“ tippen. Dein Spielstand bleibt erhalten." % tag
+		upd_btn.text = "Herunterladen"
 		upd_btn.disabled = false
 		upd_bar.visible = false
 		get_node("UpdRoot").visible = true
-		if OS.get_name() == "Android":
-			# automatisch laden und die Installation sofort öffnen
-			l_update.text = "Version %s wird automatisch geladen und gleich installiert. Dein Spielstand bleibt erhalten." % tag
-			start_download()
 	elif manual_check:
 		add_log("Du hast die neueste Version (%s)." % ProjectSettings.get_setting("application/config/version", "?"), "good")
 
