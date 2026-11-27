@@ -1,0 +1,8 @@
+run=34 result=success sha=fbc78007bea6927c1b8c94776558a2539eccc273
+total 45436
+drwxr-xr-x 2 runner runner     4096 Nov 27 09:08 .
+drwxr-xr-x 4 runner runner     4096 Nov 27 09:08 ..
+-rw-r--r-- 1 runner runner 46133562 Nov 27 09:08 BundesbankIdle.apk
+-rw-r--r-- 1 runner runner   366006 Nov 27 09:08 BundesbankIdle.apk.idsig
+-rw-r--r-- 1 runner runner     6524 Nov 27 09:08 export.log
+-rw-r--r-- 1 runner runner      147 Nov 27 09:08 import.log
